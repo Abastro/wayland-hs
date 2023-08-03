@@ -19,7 +19,11 @@ common warnings
 library
   import:           warnings
   exposed-modules:
-  -- other-modules:
+    Graphics.Wayland.Util
+    Graphics.Wayland.Server.Resource
+    Graphics.Wayland.Scanner
+  other-modules:
+    Graphics.Util
   default-extensions:
     LambdaCase
     RecordWildCards
@@ -28,8 +32,12 @@ library
   build-depends:
     base ^>=4.17.1.0,
     containers,
+    transformers,
+    mtl,
     bytestring,
     text,
+    vector,
+    template-haskell >=2.16,
   build-tool-depends:
     c2hs:c2hs >=0.28,
   pkgconfig-depends:

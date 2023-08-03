@@ -1,4 +1,4 @@
-module Graphics.Wayland.Util.Types (
+module Graphics.Wayland.Util (
   Message(..),
   Interface(..),
   WlArray(..), WlArrayPtr,
@@ -35,11 +35,11 @@ instance Storable WlArray where
     {# set array->alloc #} arrPtr (fromIntegral len)
     {# set array->data #} arrPtr (castPtr bsPtr)
 
-data WlFixed
+-- newtype WlFixed = WlFixed (Fixed )
 
 -- | Data to feed wl_resource_post_event_array.
 --
--- Argument data itself could be an integer, and it lags the tag.
+-- Argument data itself could be an integer, and it lags a tag.
 -- Hence, it is represented as a WordPtr for seamless conversion.
 newtype Argument = Argument WordPtr
 {# pointer *argument as ArgumentPtr -> Argument #}
