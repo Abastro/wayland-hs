@@ -7,9 +7,9 @@ module Graphics.Wayland.Scanner.Generate.Types (
 
 import Foreign
 import Graphics.Wayland.Scanner.Env
+import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
-import Graphics.Wayland.Scanner.Marshall (ArgumentAtom(..))
 
 -- ? Drop the prefix
 
@@ -18,12 +18,14 @@ generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
 generateInterfaceTypes interface = do
   interfaceType <- scanNewType [interface.ifName]
   let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
-  decl <- TH.newtypeD (pure []) interfaceType [] Nothing constr []
-  atomInstance <- [d|
-    instance ArgumentAtom $(TH.conT interfaceType) where
-      withAtom = $(TH.conE interfaceType)
-      peekAtom = undefined
-    |]
-  pure [decl]
+  typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr []
+  atomInstance <-
+    [d|
+      instance ArgumentAtom $(TH.conT interfaceType) where
+        withAtom = withAtomPtr $(TH.lam1E (TH.conP interfaceType [TH.varP ptr]) (TH.varE ptr))
+        peekAtom = peekAtomPtr $(TH.conE interfaceType)
+      |]
+  pure (typeDec : atomInstance)
  where
+  ptr = TH.mkName "ptr"
   noBang = TH.bang TH.noSourceUnpackedness TH.noSourceStrictness

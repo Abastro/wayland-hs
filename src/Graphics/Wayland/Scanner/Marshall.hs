@@ -1,6 +1,8 @@
 module Graphics.Wayland.Scanner.Marshall (
   AsArguments (..),
   ArgumentAtom (..),
+  withAtomPtr,
+  peekAtomPtr,
 ) where
 
 import Data.ByteString qualified as BS
@@ -69,9 +71,10 @@ instance (ArgumentAtom t) => ArgumentAtom (Maybe t) where
     n | n == nullPtr -> pure Nothing
     _ -> Just <$> peekAtom arg
 
--- To aid usage in newtypes over pointers.
-instance ArgumentAtom (Ptr p) where
-  withAtom :: Ptr p -> (Argument -> IO a) -> IO a
-  withAtom ptr act = act $ ptrToArgument ptr
-  peekAtom :: Argument -> IO (Ptr p)
-  peekAtom arg = pure $ argumentToPtr arg
+-- | withAtom for newtypes over pointers.
+withAtomPtr :: (p -> Ptr p) -> p -> (Argument -> IO a) -> IO a
+withAtomPtr deconstr val act = act $ ptrToArgument (deconstr val)
+
+-- | peekAtom for newtypes over pointers.
+peekAtomPtr :: (Ptr p -> p) -> Argument -> IO p
+peekAtomPtr constr arg = pure . constr $ argumentToPtr arg

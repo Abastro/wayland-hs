@@ -34,7 +34,7 @@ scanNewType qual = do
  where
   typeName = symbol . hsConName $ aQualified qual
 
--- ? Perhaps do not mind ordering, and generate when first encountered?
+-- ? Local scopes?
 scannedType :: [T.Text] -> Scan TH.Name
 scannedType qual = do
   ScanState scanned <- get
