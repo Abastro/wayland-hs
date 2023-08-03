@@ -1,0 +1,51 @@
+cabal-version:      3.0
+name:               wayland-hs
+version:            0.1.0.0
+synopsis:           Wayland haskell binding
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Abastro
+maintainer:         abab9579@gmail.com
+-- copyright:
+category:           Graphics
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+  ghc-options: -Wall
+
+library
+  import:           warnings
+  exposed-modules:
+  -- other-modules:
+  default-extensions:
+    LambdaCase
+    RecordWildCards
+    NoFieldSelectors
+    OverloadedRecordDot
+  build-depends:
+    base ^>=4.17.1.0,
+    containers,
+    bytestring,
+    text,
+  build-tool-depends:
+    c2hs:c2hs >=0.28,
+  pkgconfig-depends:
+    wayland-client,
+    wayland-server,
+  hs-source-dirs:   src
+  default-language: GHC2021
+
+test-suite wayland-hs-test
+  import:           warnings
+  default-language: GHC2021
+  -- other-modules:
+  -- other-extensions:
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Main.hs
+  build-depends:
+    base ^>=4.17.1.0,
+    wayland-hs
