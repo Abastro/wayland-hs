@@ -9,7 +9,7 @@ import Data.Int
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word
-import Foreign (nullPtr, peek, with)
+import Foreign (Ptr, nullPtr, peek, with)
 import Graphics.Wayland.Util (Argument, WlArray, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
 
@@ -68,3 +68,10 @@ instance (ArgumentAtom t) => ArgumentAtom (Maybe t) where
   peekAtom arg = case argumentToPtr arg of
     n | n == nullPtr -> pure Nothing
     _ -> Just <$> peekAtom arg
+
+-- To aid usage in newtypes over pointers.
+instance ArgumentAtom (Ptr p) where
+  withAtom :: Ptr p -> (Argument -> IO a) -> IO a
+  withAtom ptr act = act $ ptrToArgument ptr
+  peekAtom :: Argument -> IO (Ptr p)
+  peekAtom arg = pure $ argumentToPtr arg

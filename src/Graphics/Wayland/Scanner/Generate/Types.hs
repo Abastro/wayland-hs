@@ -9,6 +9,7 @@ import Foreign
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
+import Graphics.Wayland.Scanner.Marshall (ArgumentAtom(..))
 
 -- ? Drop the prefix
 
@@ -16,14 +17,13 @@ import Language.Haskell.TH qualified as TH
 generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
 generateInterfaceTypes interface = do
   interfaceType <- scanNewType [interface.ifName]
-  decl <-
-    TH.newtypeD
-      (pure [])
-      interfaceType
-      []
-      Nothing
-      (TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]])
-      []
+  let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
+  decl <- TH.newtypeD (pure []) interfaceType [] Nothing constr []
+  atomInstance <- [d|
+    instance ArgumentAtom $(TH.conT interfaceType) where
+      withAtom = $(TH.conE interfaceType)
+      peekAtom = undefined
+    |]
   pure [decl]
  where
   noBang = TH.bang TH.noSourceUnpackedness TH.noSourceStrictness
