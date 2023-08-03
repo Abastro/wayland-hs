@@ -34,6 +34,8 @@ data SignalSpec = SignalSpec
     arguments :: V.Vector ArgumentSpec
   }
 
+data EnumType = SimpleEnum | BitField
+
 data EnumSpec = EnumSpec
   { enumName :: T.Text,
     enumType :: EnumType,
@@ -50,7 +52,6 @@ data ArgumentSpec = ArgumentSpec
   }
 
 data CanNull = NonNull | Nullable
-data EnumType = SimpleEnum | BitField
 
 data ArgumentType
   = ArgInt

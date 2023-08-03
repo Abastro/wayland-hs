@@ -21,9 +21,16 @@ library
   exposed-modules:
     Graphics.Wayland.Util
     Graphics.Wayland.Server.Resource
+
     Graphics.Wayland.Scanner
+    Graphics.Wayland.Scanner.Types
+    Graphics.Wayland.Scanner.Env
+    Graphics.Wayland.Scanner.Marshall
+    Graphics.Wayland.Scanner.Generate.Types
+    Graphics.Wayland.Scanner.Generate.Arguments
   other-modules:
     Graphics.Util
+    Graphics.Wayland.Scanner.Naming
   default-extensions:
     LambdaCase
     RecordWildCards

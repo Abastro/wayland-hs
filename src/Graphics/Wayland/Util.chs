@@ -35,7 +35,7 @@ instance Storable WlArray where
     {# set array->alloc #} arrPtr (fromIntegral len)
     {# set array->data #} arrPtr (castPtr bsPtr)
 
--- newtype WlFixed = WlFixed (Fixed )
+data WlFixed
 
 -- | Data to feed wl_resource_post_event_array.
 --

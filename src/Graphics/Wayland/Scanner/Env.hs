@@ -2,6 +2,7 @@ module Graphics.Wayland.Scanner.Env (
   Scan (..),
   ScanState (..),
   scanNewType,
+  scannedType,
 ) where
 
 import Control.Monad.State.Strict
@@ -32,3 +33,9 @@ scanNewType qual = do
   pure typeName
  where
   typeName = symbol . hsConName $ aQualified qual
+
+-- ? Perhaps do not mind ordering, and generate when first encountered?
+scannedType :: [T.Text] -> Scan TH.Name
+scannedType qual = do
+  ScanState scanned <- get
+  maybe (error $ "Type for " <> show qual <> " not found") pure (scanned M.!? V.fromList qual)
