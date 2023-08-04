@@ -8,15 +8,13 @@ module Graphics.Wayland.Scanner.Env (
 
 import Control.Monad.State.Strict
 import Data.Map.Strict qualified as M
-import Data.Text qualified as T
-import Data.Vector qualified as V
 import Graphics.Wayland.Scanner.Naming
 import Language.Haskell.TH qualified as TH
 
 -- | The scanning state.
 newtype ScanState = ScanState
   { -- | Scanned types indexed by the protocol-qualified name.
-    scannedTypes :: M.Map (V.Vector T.Text) TH.Name
+    scannedTypes :: M.Map QualifiedName TH.Name
   }
   deriving (Semigroup, Monoid)
 
@@ -31,15 +29,17 @@ instance TH.Quote Scan where
 runScan :: Scan a -> TH.Q a
 runScan (Scan runner) = evalStateT runner mempty
 
-scanNewType :: [T.Text] -> Scan TH.Name
-scanNewType qual = do
-  modify (<> ScanState (M.singleton (V.fromList qual) typeName))
+-- | Create a new scanned type and advertises it to be available.
+scanNewType :: QualifiedName -> Scan TH.Name
+scanNewType qualName = do
+  modify (<> ScanState (M.singleton qualName typeName))
   pure typeName
  where
-  typeName = symbol . hsConName $ aQualified qual
+  typeName = aQualified HsConstructor qualName
 
 -- ? Local scopes?
-scannedType :: [T.Text] -> Scan TH.Name
-scannedType qual = do
+-- | A scanned type.
+scannedType :: QualifiedName -> Scan TH.Name
+scannedType qualName = do
   ScanState scanned <- get
-  maybe (error $ "Type for " <> show qual <> " not found") pure (scanned M.!? V.fromList qual)
+  maybe (error $ "Type for " <> show qualName <> " not found") pure (scanned M.!? qualName)

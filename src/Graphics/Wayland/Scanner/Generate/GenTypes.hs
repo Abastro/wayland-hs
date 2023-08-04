@@ -8,6 +8,7 @@ module Graphics.Wayland.Scanner.Generate.GenTypes (
 import Foreign
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Marshall
+import Graphics.Wayland.Scanner.Naming
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
 
@@ -16,7 +17,7 @@ import Language.Haskell.TH qualified as TH
 -- | Simply generate the interface type.
 generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
 generateInterfaceTypes interface = do
-  interfaceType <- scanNewType [interface.ifName]
+  interfaceType <- scanNewType (lead interface.ifName)
   let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
   typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr []
   atomInstance <-

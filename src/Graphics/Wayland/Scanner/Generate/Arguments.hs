@@ -22,20 +22,21 @@ import System.Posix.Types
 -- The interface types must have been introduced first for this to work properly.
 generateSignalArgument :: T.Text -> SignalSpec -> Scan [TH.Dec]
 generateSignalArgument interfaceName signal = do
-  argsType <- scanNewType [interfaceName, signal.sigName, T.pack "arg"]
+  argsType <- scanNewType $ subName qualSignal [T.pack "arg"]
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType fieldsQ] [derives]
   fields <- sequenceA fieldsQ
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (typeDec : instances)
   where
+    qualSignal = subName (lead interfaceName) [signal.sigName]
     derives = TH.derivClause Nothing [[t|Show|], [t|Eq|]]
-    fieldsQ = argumentField [interfaceName, signal.sigName] <$> toList signal.arguments
+    fieldsQ = argumentField qualSignal <$> toList signal.arguments
 
-argumentField :: [T.Text] -> ArgumentSpec -> Scan TH.VarBangType
+argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
 argumentField qualSignal arg = TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
-  field = symbol . hsVarName $ aQualified (qualSignal <> [arg.argName])
+  field = aQualified HsVariable $ subName qualSignal [arg.argName]
 
 -- |
 --   Generates:
@@ -98,4 +99,4 @@ argumentType = \case
   addNullable = \case
     NonNull -> id
     Nullable -> \typ -> [t|Maybe $typ|]
-  interfaceTypeOf name = TH.ConT <$> scannedType [name]
+  interfaceTypeOf name = TH.ConT <$> scannedType (lead name)

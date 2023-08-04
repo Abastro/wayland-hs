@@ -1,4 +1,4 @@
-module Graphics.Util (
+module Graphics.ForeignUtil (
   withNullPtr,
   nullCk,
   peekDouble,

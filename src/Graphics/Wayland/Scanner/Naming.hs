@@ -1,27 +1,41 @@
 module Graphics.Wayland.Scanner.Naming (
-  symbol,
-  hsConName,
-  hsVarName,
+  QualifiedName (..),
+  lead,
+  subName,
+  NamingScheme (..),
   aQualified,
 ) where
 
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Language.Haskell.TH qualified as TH
 
-symbol :: T.Text -> TH.Name
-symbol name = TH.mkName (T.unpack name)
+newtype QualifiedName = QualifiedName (NE.NonEmpty T.Text)
+  deriving (Show, Eq, Ord)
 
--- | Turn snake_case into haskell constructor naming scheme.
-hsConName :: T.Text -> T.Text
-hsConName = aQualified . T.splitOn (T.pack "_")
+lead :: T.Text -> QualifiedName
+lead dom = QualifiedName (NE.singleton dom)
 
--- | Turn snake_case into haskell variable naming scheme.
-hsVarName :: T.Text -> T.Text
-hsVarName text = let (heading, remainder) = T.splitAt 1 $ hsConName text in T.toLower heading <> remainder
+subName :: QualifiedName -> [T.Text] -> QualifiedName
+subName (QualifiedName ls) sub = QualifiedName (NE.appendList ls sub)
+
+data NamingScheme = HsConstructor | HsVariable
 
 -- | Haskell does not support namespaces, so we approximate qualified names instead.
 --
--- > aQualified [x] == x
--- > aQualified [aQualified xs, aQualified ys] == aQualified (xs <> ys)
-aQualified :: [T.Text] -> T.Text
-aQualified = T.concat . map T.toTitle
+-- The input should be C-style names.
+--
+-- >>> aQualified HsConstructor (subName (lead $ T.pack "foo_bar") [T.pack "baz_foo"])
+-- FooBarBazFoo
+-- >>> aQualified HsVariable (subName (lead $ T.pack "foo_bar") [T.pack "baz_foo"])
+-- fooBarBazFoo
+--
+aQualified :: NamingScheme -> QualifiedName -> TH.Name
+aQualified scheme (QualifiedName names) = TH.mkName . T.unpack $ casing asSplit
+ where
+  asSplit = NE.toList names >>= T.splitOn (T.pack "_")
+  casing = case scheme of
+    HsConstructor -> T.concat . map T.toTitle
+    HsVariable -> \case
+      [] -> T.empty
+      begin : trailing -> T.concat (begin : map T.toTitle trailing)
