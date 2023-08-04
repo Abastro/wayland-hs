@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Graphics.Wayland.Scanner.Generate.Types (
+module Graphics.Wayland.Scanner.Generate.GenTypes (
   generateInterfaceTypes,
 ) where
 

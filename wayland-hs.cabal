@@ -25,11 +25,14 @@ library
     Graphics.Wayland.Scanner
     Graphics.Wayland.Scanner.Types
     Graphics.Wayland.Scanner.Env
+    Graphics.Wayland.Scanner.Parse
     Graphics.Wayland.Scanner.Marshall
-    Graphics.Wayland.Scanner.Generate.Types
+    Graphics.Wayland.Scanner.Generate.GenTypes
     Graphics.Wayland.Scanner.Generate.Arguments
+
+    Graphics.Wayland.Test
   other-modules:
-    Graphics.Util
+    Graphics.ForeignUtil
     Graphics.Wayland.Scanner.Naming
   default-extensions:
     LambdaCase
@@ -45,6 +48,7 @@ library
     text,
     vector,
     template-haskell >=2.16,
+    HaXml ^>=1.25.13,
   build-tool-depends:
     c2hs:c2hs >=0.28,
   pkgconfig-depends:

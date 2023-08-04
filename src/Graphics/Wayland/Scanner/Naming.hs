@@ -13,15 +13,15 @@ symbol name = TH.mkName (T.unpack name)
 
 -- | Turn snake_case into haskell constructor naming scheme.
 hsConName :: T.Text -> T.Text
-hsConName = error "TODO"
+hsConName = aQualified . T.splitOn (T.pack "_")
 
 -- | Turn snake_case into haskell variable naming scheme.
 hsVarName :: T.Text -> T.Text
-hsVarName = error "TODO"
+hsVarName text = let (heading, remainder) = T.splitAt 1 $ hsConName text in T.toLower heading <> remainder
 
 -- | Haskell does not support namespaces, so we approximate qualified names instead.
 --
 -- > aQualified [x] == x
 -- > aQualified [aQualified xs, aQualified ys] == aQualified (xs <> ys)
 aQualified :: [T.Text] -> T.Text
-aQualified = error "TODO"
+aQualified = T.concat . map T.toTitle

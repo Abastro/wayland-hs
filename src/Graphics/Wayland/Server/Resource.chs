@@ -12,7 +12,7 @@ where
 import Foreign
 import Foreign.C.Types
 
-import Graphics.Util
+import Graphics.ForeignUtil
 {# import Graphics.Wayland.Util #}
 
 #include <wayland-server.h>

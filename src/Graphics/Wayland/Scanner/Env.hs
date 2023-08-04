@@ -1,6 +1,7 @@
 module Graphics.Wayland.Scanner.Env (
   Scan (..),
   ScanState (..),
+  runScan,
   scanNewType,
   scannedType,
 ) where
@@ -26,6 +27,9 @@ newtype Scan a = Scan (StateT ScanState TH.Q a)
 instance TH.Quote Scan where
   newName :: String -> Scan TH.Name
   newName name = Scan (lift $ TH.newName name)
+
+runScan :: Scan a -> TH.Q a
+runScan (Scan runner) = evalStateT runner mempty
 
 scanNewType :: [T.Text] -> Scan TH.Name
 scanNewType qual = do
