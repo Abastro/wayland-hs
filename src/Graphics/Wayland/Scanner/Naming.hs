@@ -42,6 +42,7 @@ aQualified scheme (QualifiedName names) =
   substitute = \case
     name
       | name == T.pack "class" -> T.pack "klass"
+      | name == T.pack "id" -> T.pack "ident"
       | otherwise -> name
   asSplit = NE.toList names >>= T.splitOn (T.pack "_")
   casing = case scheme of

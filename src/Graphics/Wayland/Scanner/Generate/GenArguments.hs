@@ -66,13 +66,14 @@ argumentInstances argsType fieldNames =
   [d|
     instance AsArguments $(TH.conT argsType) where
       argLength _ = numArgs
-      withArgs $(TH.varP args) $(TH.varP emit) =
+      withArgs $(wildOnZero $ TH.varP args) $(TH.varP emit) =
         $(foldr withAtomOn withArgsRet fieldNames)
       peekArgs $(TH.listP $ TH.varP <$> argNameList) =
         $(foldr peekAtomOn peekArgsRet fieldNames)
       peekArgs _ = error $(TH.litE $ TH.StringL peekError)
     |]
  where
+  wildOnZero pat = if numArgs == 0 then TH.wildP else pat
   argNameFor field = TH.mkName $ TH.nameBase field <> "P"
   argNameList = argNameFor <$> fieldNames
 
