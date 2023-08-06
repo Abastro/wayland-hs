@@ -65,8 +65,8 @@ data CanNull = NonNull | Nullable
 data ArgumentType
   = ArgInt
   | ArgUInt
-  | ArgObject CanNull T.Text
-  | ArgNewID CanNull T.Text
+  | ArgObject CanNull (Maybe T.Text)
+  | ArgNewID CanNull (Maybe T.Text)
   | ArgString CanNull
   | ArgArray CanNull
   | ArgFd

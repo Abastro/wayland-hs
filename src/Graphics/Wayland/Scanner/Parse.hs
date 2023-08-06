@@ -101,12 +101,9 @@ parseArgument = simpleTag "arg" $ \attrMap -> do
     Just "uint" -> pure ArgUInt
     Just "fixed" -> pure ArgInt -- TODO Fixed type
     Just "object" -> do
-      -- TODO Properly handle the null case
-      interface <- maybe (pure T.empty) pure mayInterface
-      pure $ ArgObject allowNull interface
+      pure $ ArgObject allowNull mayInterface
     Just "new_id" -> do
-      interface <- maybe (pure T.empty) pure mayInterface
-      pure $ ArgNewID allowNull interface
+      pure $ ArgNewID allowNull mayInterface
     Just "string" -> pure $ ArgString allowNull
     Just "array" -> pure $ ArgArray allowNull
     Just "fd" -> pure ArgFd

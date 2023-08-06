@@ -35,7 +35,7 @@ generateSignalArgument interfaceName signal = do
   pure (typeDec : instances)
  where
   qualSignal = subName (lead interfaceName) [signal.sigName]
-  derives = TH.derivClause Nothing [[t|Show|], [t|Eq|]]
+  derives = TH.derivClause Nothing [[t|Show|]]
   fieldsQ = argumentField qualSignal <$> toList signal.arguments
 
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
@@ -95,8 +95,10 @@ argumentType :: ArgumentType -> Scan TH.Type
 argumentType = \case
   ArgInt -> [t|Int32|]
   ArgUInt -> [t|Word32|]
-  ArgObject canNull name -> addNullable canNull (interfaceTypeOf name)
-  ArgNewID canNull name -> addNullable canNull (interfaceTypeOf name)
+  ArgObject canNull (Just name) -> addNullable canNull (interfaceTypeOf name)
+  ArgObject _ Nothing -> [t|Word32|] -- Placeholder for typeless case
+  ArgNewID canNull (Just name) -> addNullable canNull (interfaceTypeOf name)
+  ArgNewID _ Nothing -> [t|Word32|] -- Placeholder as well
   ArgString canNull -> addNullable canNull [t|T.Text|]
   ArgArray canNull -> addNullable canNull [t|WlArray|]
   ArgFd -> [t|Fd|]

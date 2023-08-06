@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Graphics.Wayland.Test where
+module Graphics.Wayland.Protocol.Types where
 
 import Graphics.Wayland.Scanner
 

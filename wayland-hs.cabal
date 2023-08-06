@@ -30,7 +30,7 @@ library
     Graphics.Wayland.Scanner.Generate.GenTypes
     Graphics.Wayland.Scanner.Generate.GenArguments
 
-    Graphics.Wayland.Test
+    Graphics.Wayland.Protocol.Types
   other-modules:
     Graphics.ForeignUtil
     Graphics.Wayland.Scanner.Naming

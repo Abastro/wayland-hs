@@ -25,13 +25,16 @@ generateInterfaceTypes interface = do
   interfaceType <- scanNewType (lead interface.ifName)
   let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
   typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr []
-  atomInstance <-
+  let typeName = TH.nameBase interfaceType
+  instances <-
     [d|
+      instance Show $(TH.conT interfaceType) where
+        show _ = typeName
       instance ArgumentAtom $(TH.conT interfaceType) where
         withAtom = withAtomPtr $(TH.lam1E (TH.conP interfaceType [TH.varP ptr]) (TH.varE ptr))
         peekAtom = peekAtomPtr $(TH.conE interfaceType)
       |]
-  pure (typeDec : atomInstance)
+  pure (typeDec : instances)
  where
   ptr = TH.mkName "ptr"
   noBang = TH.bang TH.noSourceUnpackedness TH.noSourceStrictness

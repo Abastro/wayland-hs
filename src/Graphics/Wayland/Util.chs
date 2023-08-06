@@ -21,6 +21,7 @@ import Foreign.C.Types
 
 -- | Named as WlArray to avoid name collision.
 newtype WlArray = WlArray BS.ByteString
+  deriving (Show)
 {# pointer *array as WlArrayPtr -> WlArray #}
 
 instance Storable WlArray where
