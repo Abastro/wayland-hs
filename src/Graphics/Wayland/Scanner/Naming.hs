@@ -11,7 +11,11 @@ import Data.Text qualified as T
 import Language.Haskell.TH qualified as TH
 
 newtype QualifiedName = QualifiedName (NE.NonEmpty T.Text)
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show QualifiedName where
+  show :: QualifiedName -> String
+  show (QualifiedName names) = "QName" <> show (NE.toList names)
 
 lead :: T.Text -> QualifiedName
 lead dom = QualifiedName (NE.singleton dom)

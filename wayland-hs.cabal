@@ -28,7 +28,7 @@ library
     Graphics.Wayland.Scanner.Parse
     Graphics.Wayland.Scanner.Marshall
     Graphics.Wayland.Scanner.Generate.GenTypes
-    Graphics.Wayland.Scanner.Generate.Arguments
+    Graphics.Wayland.Scanner.Generate.GenArguments
 
     Graphics.Wayland.Test
   other-modules:

@@ -1,13 +1,15 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Graphics.Wayland.Scanner.Generate.Arguments (
+module Graphics.Wayland.Scanner.Generate.GenArguments (
+  generateAllArguments,
   generateSignalArgument,
 ) where
 
 import Data.Foldable
 import Data.Int
 import Data.Text qualified as T
+import Data.Traversable
 import Data.Word
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Marshall
@@ -15,7 +17,11 @@ import Graphics.Wayland.Scanner.Naming
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Util (WlArray)
 import Language.Haskell.TH qualified as TH
-import System.Posix.Types
+import System.Posix.Types (Fd)
+
+generateAllArguments :: ProtocolSpec -> Scan [TH.Dec]
+generateAllArguments protocol = fmap fold . for protocol.interfaces $ \interface -> do
+  fold <$> traverse (generateSignalArgument interface.ifName) (interface.requests <> interface.events)
 
 -- | Generate argument type for specific signal.
 --
@@ -27,10 +33,10 @@ generateSignalArgument interfaceName signal = do
   fields <- sequenceA fieldsQ
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (typeDec : instances)
-  where
-    qualSignal = subName (lead interfaceName) [signal.sigName]
-    derives = TH.derivClause Nothing [[t|Show|], [t|Eq|]]
-    fieldsQ = argumentField qualSignal <$> toList signal.arguments
+ where
+  qualSignal = subName (lead interfaceName) [signal.sigName]
+  derives = TH.derivClause Nothing [[t|Show|], [t|Eq|]]
+  fieldsQ = argumentField qualSignal <$> toList signal.arguments
 
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
 argumentField qualSignal arg = TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
@@ -51,7 +57,7 @@ argumentField qualSignal arg = TH.varBangType field $ TH.bangType strict (argume
 -- >       peekAtom fooP >>= \foo ->
 -- >         peekAtom barP >>= \bar ->
 -- >           pure FooBarArg{foo, bar}
--- >     _ -> error "Wrong number of arguments, expected 2."
+-- >     _ -> error "wrong number of arguments, expected 2."
 argumentInstances :: TH.Name -> [TH.Name] -> Scan [TH.Dec]
 argumentInstances argsType fieldNames =
   [d|
@@ -79,7 +85,7 @@ argumentInstances argsType fieldNames =
         $next
       |]
   peekArgsRet = [e|pure $(TH.recConE argsType $ [TH.fieldExp aField (TH.varE aField) | aField <- fieldNames])|]
-  peekError = "Wrong number of arguments, expected " <> show numArgs <> "."
+  peekError = "wrong number of arguments, expected " <> show numArgs <> "."
 
   numArgs = length fieldNames
   args = TH.mkName "args"

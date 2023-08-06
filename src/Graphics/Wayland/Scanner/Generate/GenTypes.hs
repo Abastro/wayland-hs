@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Graphics.Wayland.Scanner.Generate.GenTypes (
+  generateAllTypes,
   generateInterfaceTypes,
 ) where
 
@@ -11,8 +12,12 @@ import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Naming
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
+import Data.Foldable
 
 -- ? Drop the prefix
+
+generateAllTypes :: ProtocolSpec -> Scan [TH.Dec]
+generateAllTypes protocol = fold <$> traverse generateInterfaceTypes protocol.interfaces
 
 -- | Simply generate the interface type.
 generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
