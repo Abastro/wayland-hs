@@ -17,6 +17,7 @@ import Graphics.Wayland.Scanner.Naming
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Util (WlArray)
 import Language.Haskell.TH qualified as TH
+import Language.Haskell.TH.Syntax qualified as THS
 import System.Posix.Types (Fd)
 
 generateAllArguments :: ProtocolSpec -> Scan [TH.Dec]
@@ -67,7 +68,7 @@ argumentInstances argsType fieldNames =
         $(foldr withAtomOn withArgsRet fieldNames)
       peekArgs $(TH.listP $ TH.varP <$> argNameList) =
         $(foldr peekAtomOn peekArgsRet fieldNames)
-      peekArgs _ = error peekError
+      peekArgs _ = error $(THS.liftString peekError)
     |]
  where
   argNameFor field = TH.mkName $ TH.nameBase field <> "P"
