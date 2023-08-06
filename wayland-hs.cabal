@@ -67,4 +67,5 @@ test-suite wayland-hs-test
   main-is:          Main.hs
   build-depends:
     base ^>=4.17.1.0,
+    template-haskell >=2.16,
     wayland-hs

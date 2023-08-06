@@ -29,14 +29,20 @@ data NamingScheme = HsConstructor | HsVariable
 --
 -- The input should be C-style names.
 --
+-- Note: substitution is performed for specific words.
+--
 -- >>> aQualified HsConstructor (subName (lead $ T.pack "foo_bar") [T.pack "baz_foo"])
 -- FooBarBazFoo
 -- >>> aQualified HsVariable (subName (lead $ T.pack "foo_bar") [T.pack "baz_foo"])
 -- fooBarBazFoo
---
 aQualified :: NamingScheme -> QualifiedName -> TH.Name
-aQualified scheme (QualifiedName names) = TH.mkName . T.unpack $ casing asSplit
+aQualified scheme (QualifiedName names) =
+  TH.mkName . T.unpack . substitute $ casing asSplit
  where
+  substitute = \case
+    name
+      | name == T.pack "class" -> T.pack "klass"
+      | otherwise -> name
   asSplit = NE.toList names >>= T.splitOn (T.pack "_")
   casing = case scheme of
     HsConstructor -> T.concat . map T.toTitle

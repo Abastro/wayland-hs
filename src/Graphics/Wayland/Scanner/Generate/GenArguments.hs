@@ -19,6 +19,9 @@ import Graphics.Wayland.Util (WlArray)
 import Language.Haskell.TH qualified as TH
 import System.Posix.Types (Fd)
 
+-- | Generate all arguments.
+--
+-- Note that this was written assuming that DuplicateRecordFields extension is enabled.
 generateAllArguments :: ProtocolSpec -> Scan [TH.Dec]
 generateAllArguments protocol = fmap fold . for protocol.interfaces $ \interface -> do
   fold <$> traverse (generateSignalArgument interface.ifName) (interface.requests <> interface.events)
@@ -39,10 +42,10 @@ generateSignalArgument interfaceName signal = do
   fieldsQ = argumentField qualSignal <$> toList signal.arguments
 
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
-argumentField qualSignal arg = TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
+argumentField _ arg = TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
-  field = aQualified HsVariable $ subName qualSignal [arg.argName]
+  field = aQualified HsVariable $ lead arg.argName
 
 -- |
 --   Generates:
