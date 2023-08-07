@@ -17,13 +17,12 @@ import Language.Haskell.TH qualified as TH
 -- ? Drop the prefix
 
 generateAllTypes :: ProtocolSpec -> Scan [TH.Dec]
-generateAllTypes protocol = do
-  fold <$> traverse generateInterfaceTypes protocol.interfaces
+generateAllTypes protocol = foldMap generateInterfaceTypes protocol.interfaces
 
 -- | Generate the interface type and relevant enum types.
 generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
 generateInterfaceTypes interface = do
-  interfaceType <- scanNewType (lead interface.ifName)
+  interfaceType <- scanNewType domain
   let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
   typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr [derives]
   let typeName = TH.nameBase interfaceType
@@ -33,9 +32,10 @@ generateInterfaceTypes interface = do
         show _ = typeName
       |]
   -- Then, enums
-  enums <- fold <$> traverse (generateEnums (lead interface.ifName)) interface.enums
+  enums <- foldMap (generateEnums domain) interface.enums
   pure (typeDec : instances <> enums)
  where
+  domain = lead interface.ifName
   derives = TH.derivClause Nothing [[t|ArgumentAtom|]]
   noBang = TH.bang TH.noSourceUnpackedness TH.noSourceStrictness
 

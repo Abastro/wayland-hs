@@ -9,7 +9,6 @@ module Graphics.Wayland.Scanner.Generate.GenArguments (
 import Data.Foldable
 import Data.Int
 import Data.Text qualified as T
-import Data.Traversable
 import Data.Word
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Marshall
@@ -22,21 +21,23 @@ import System.Posix.Types (Fd)
 --
 -- Note that this was written assuming that DuplicateRecordFields extension is enabled.
 generateAllArguments :: ProtocolSpec -> Scan [TH.Dec]
-generateAllArguments protocol = fmap fold . for protocol.interfaces $ \interface -> do
-  fold <$> traverse (generateSignalArgument interface.ifName) (interface.requests <> interface.events)
+generateAllArguments protocol = foldMap genForInterface protocol.interfaces
+ where
+  genForInterface interface =
+    foldMap (generateSignalArgument $ lead interface.ifName) (interface.requests <> interface.events)
 
 -- | Generate argument type for specific signal.
 --
 -- The interface types must have been introduced first for this to work properly.
-generateSignalArgument :: T.Text -> SignalSpec -> Scan [TH.Dec]
-generateSignalArgument interfaceName signal = do
+generateSignalArgument :: QualifiedName -> SignalSpec -> Scan [TH.Dec]
+generateSignalArgument parent signal = do
   argsType <- scanNewType $ subName qualSignal [T.pack "arg"]
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType fieldsQ] [derives]
   fields <- sequenceA fieldsQ
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (typeDec : instances)
  where
-  qualSignal = subName (lead interfaceName) [signal.sigName]
+  qualSignal = subName parent [signal.sigName]
   derives = TH.derivClause Nothing [[t|Show|]]
   fieldsQ = argumentField qualSignal <$> toList signal.arguments
 

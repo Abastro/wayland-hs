@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingVia #-}
+
 module Graphics.Wayland.Scanner.Env (
   QualifiedName (..),
   lead,
@@ -15,6 +17,7 @@ import Control.Monad.Reader
 import Data.IORef
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
+import Data.Monoid (Ap (..))
 import Data.Text qualified as T
 import Language.Haskell.TH qualified as TH
 
@@ -44,7 +47,8 @@ data ScanEnv = ScanEnv
 
 -- | Base monad for scanning & codegen operations.
 newtype Scan a = Scan (ReaderT ScanEnv TH.Q a)
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
+  deriving (Semigroup, Monoid) via (Ap Scan a)
 
 instance TH.Quote Scan where
   newName :: String -> Scan TH.Name
