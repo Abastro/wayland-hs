@@ -26,8 +26,10 @@ import System.Posix.Types (Fd)
 -- | Emit the protocol types to a module.
 emitProtocolTypes :: String -> FilePath -> TH.Q [TH.Dec]
 emitProtocolTypes prefix path = do
-  Right protocol <- protocolFromXML path <$> TH.runIO (readFile path)
-  runScan (T.pack prefix) $ do
-    typeDecs <- generateAllTypes protocol
-    argDecs <- generateAllArguments protocol
-    pure (typeDecs <> argDecs)
+  parsed <- protocolFromXML path <$> TH.runIO (readFile path)
+  case parsed of
+    Left err -> fail err
+    Right protocol -> runScan (T.pack prefix) $ do
+      typeDecs <- generateAllTypes protocol
+      argDecs <- generateAllArguments protocol
+      pure (typeDecs <> argDecs)

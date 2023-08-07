@@ -95,6 +95,7 @@ parseArgument = simpleTag "arg" $ \attrMap -> do
   Just allowNull <- pure (canNull <$> attrFlag attrMap "allow-null")
   let mayInterface = attrText attrMap "interface"
       mayEnum = attrText attrMap "enum"
+      argSummary = attrText attrMap "summary"
   argType <- case attr2str <$> attrMap M.!? "type" of
     Just _
       | Just enum <- mayEnum -> -- Type is ignored - Word should work well in most cases.
@@ -110,7 +111,7 @@ parseArgument = simpleTag "arg" $ \attrMap -> do
     Just "array" -> pure $ ArgArray allowNull
     Just "fd" -> pure ArgFd
     _ -> fail $ "invalid type encountered for argument: " <> show argName
-  pure ArgumentSpec{argName, argType}
+  pure ArgumentSpec{argName, argType, argSummary}
  where
   canNull flag = if flag then Nullable else NonNull
 
@@ -128,7 +129,8 @@ parseEnumEntry :: XMLParser EnumEntry
 parseEnumEntry = simpleTag "entry" $ \attrMap -> do
   Just entryName <- pure $ attrText attrMap "name"
   Just entryValue <- pure $ fromIntegral <$> attrInt attrMap "value"
-  pure EnumEntry{entryName, entryValue}
+  let entrySummary = attrText attrMap "summary"
+  pure EnumEntry{entryName, entryValue, entrySummary}
 
 parseDescription :: XMLParser Description
 parseDescription = elementAttrIn ["description"] $ \_ attrMap -> do

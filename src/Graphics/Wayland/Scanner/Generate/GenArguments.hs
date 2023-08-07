@@ -34,19 +34,20 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 generateSignalArgument :: QualifiedName -> SignalSpec -> Scan [TH.Dec]
 generateSignalArgument parent signal = do
   argsType <- scanNewType $ subName parent [signal.sigName, T.pack "arg"]
-  typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType fieldsQ] [derives]
+  fields <- traverse (argumentField parent) (toList signal.arguments)
+  typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe signal.sigDescribe typeDec
-  fields <- sequenceA fieldsQ
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (docTypeDec : instances)
  where
   derives = TH.derivClause Nothing [[t|Show|]]
-  fieldsQ = argumentField parent <$> toList signal.arguments
 
 -- Note: parent here is the interface.
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
 argumentField parent arg = do
   field <- aQualified HsVariable $ lead arg.argName
+  -- TODO: duplicate record fields does not admit this - how to get around?
+  -- addSummaryToName field arg.argSummary
   TH.varBangType field $ TH.bangType strict (argumentType parent arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict

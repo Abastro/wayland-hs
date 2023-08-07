@@ -54,13 +54,15 @@ data EnumSpec = EnumSpec
   deriving (Show)
 data EnumEntry = EnumEntry
   { entryName :: T.Text,
-    entryValue :: Word
+    entryValue :: Word,
+    entrySummary :: Maybe T.Text
   }
   deriving (Show)
 
 data ArgumentSpec = ArgumentSpec
   { argName :: T.Text,
-    argType :: ArgumentType
+    argType :: ArgumentType,
+    argSummary :: Maybe T.Text
   }
   deriving (Show)
 

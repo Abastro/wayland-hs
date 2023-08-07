@@ -47,7 +47,7 @@ generateEnums parent enum = do
   enumType <- scanNewType enumQualName
   notifyEnum enumQualName enum.enumType
 
-  entries <- entryPairsOf (toList enum.enumEntries)
+  entries <- traverse (enumEntry parent) (toList enum.enumEntries)
   enumDec <- TH.dataD (pure []) enumType [] Nothing (simpleC . fst <$> entries) [derives]
   docEnumDec <- addDescribe enum.enumDescribe enumDec
   instances <- enumInstanceDec (TH.conT enumType) entries enum.enumType
@@ -55,9 +55,13 @@ generateEnums parent enum = do
  where
   enumQualName = subName parent [enum.enumName]
   derives = TH.derivClause Nothing [[t|Show|], [t|Eq|], [t|Ord|]]
-  entryPairsOf = traverse $ \entry ->
-    (,entry.entryValue) <$> aQualified HsConstructor (subName parent [entry.entryName])
   simpleC name = TH.normalC name []
+
+enumEntry :: QualifiedName -> EnumEntry -> Scan (TH.Name, Word)
+enumEntry parent entry = do
+  name <- aQualified HsConstructor (subName parent [entry.entryName])
+  addSummaryToLocation (TH.DeclDoc name) entry.entrySummary
+  pure (name, entry.entryValue)
 
 enumInstanceDec :: Scan TH.Type -> [(TH.Name, Word)] -> EnumType -> Scan [TH.Dec]
 enumInstanceDec typ entryPairs = \case
