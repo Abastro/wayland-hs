@@ -10,6 +10,7 @@ import Data.Foldable
 import Foreign
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Flag
+import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
@@ -25,6 +26,7 @@ generateInterfaceTypes interface = do
   interfaceType <- scanNewType domain
   let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
   typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr [derives]
+  docTypeDec <- addDescribe interface.ifDescribe typeDec
   let typeName = TH.nameBase interfaceType
   instances <-
     [d|
@@ -33,7 +35,7 @@ generateInterfaceTypes interface = do
       |]
   -- Then, enums
   enums <- foldMap (generateEnums domain) interface.enums
-  pure (typeDec : instances <> enums)
+  pure (docTypeDec : instances <> enums)
  where
   domain = lead interface.ifName
   derives = TH.derivClause Nothing [[t|ArgumentAtom|]]
@@ -47,8 +49,9 @@ generateEnums parent enum = do
 
   entries <- entryPairsOf (toList enum.enumEntries)
   enumDec <- TH.dataD (pure []) enumType [] Nothing (simpleC . fst <$> entries) [derives]
+  docEnumDec <- addDescribe enum.enumDescribe enumDec
   instances <- enumInstanceDec (TH.conT enumType) entries enum.enumType
-  pure (enumDec : instances)
+  pure (docEnumDec : instances)
  where
   enumQualName = subName parent [enum.enumName]
   derives = TH.derivClause Nothing [[t|Show|], [t|Eq|], [t|Ord|]]

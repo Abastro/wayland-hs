@@ -28,6 +28,8 @@ library
     Graphics.Wayland.Scanner.Parse
     Graphics.Wayland.Scanner.Flag
     Graphics.Wayland.Scanner.Marshall
+
+    Graphics.Wayland.Scanner.Generate.Documentation
     Graphics.Wayland.Scanner.Generate.GenTypes
     Graphics.Wayland.Scanner.Generate.GenArguments
 

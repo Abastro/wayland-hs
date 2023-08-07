@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Data.Word
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Flag
+import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Util (WlArray)
@@ -34,9 +35,10 @@ generateSignalArgument :: QualifiedName -> SignalSpec -> Scan [TH.Dec]
 generateSignalArgument parent signal = do
   argsType <- scanNewType $ subName parent [signal.sigName, T.pack "arg"]
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType fieldsQ] [derives]
+  docTypeDec <- addDescribe signal.sigDescribe typeDec
   fields <- sequenceA fieldsQ
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
-  pure (typeDec : instances)
+  pure (docTypeDec : instances)
  where
   derives = TH.derivClause Nothing [[t|Show|]]
   fieldsQ = argumentField parent <$> toList signal.arguments
