@@ -11,6 +11,7 @@ import Data.Int
 import Data.Text qualified as T
 import Data.Word
 import Graphics.Wayland.Scanner.Env
+import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Util (WlArray)
@@ -31,20 +32,20 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 -- The interface types must have been introduced first for this to work properly.
 generateSignalArgument :: QualifiedName -> SignalSpec -> Scan [TH.Dec]
 generateSignalArgument parent signal = do
-  argsType <- scanNewType $ subName qualSignal [T.pack "arg"]
+  argsType <- scanNewType $ subName parent [signal.sigName, T.pack "arg"]
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType fieldsQ] [derives]
   fields <- sequenceA fieldsQ
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (typeDec : instances)
  where
-  qualSignal = subName parent [signal.sigName]
   derives = TH.derivClause Nothing [[t|Show|]]
-  fieldsQ = argumentField qualSignal <$> toList signal.arguments
+  fieldsQ = argumentField parent <$> toList signal.arguments
 
+-- Note: parent here is the interface.
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
-argumentField _ arg = do
+argumentField parent arg = do
   field <- aQualified HsVariable $ lead arg.argName
-  TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
+  TH.varBangType field $ TH.bangType strict (argumentType parent arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
 
@@ -96,8 +97,8 @@ argumentInstances argsType fieldNames =
   args = TH.mkName "args"
   emit = TH.mkName "emit"
 
-argumentType :: ArgumentType -> Scan TH.Type
-argumentType = \case
+argumentType :: QualifiedName -> ArgumentType -> Scan TH.Type
+argumentType parent = \case
   ArgInt -> [t|Int32|]
   ArgUInt -> [t|Word32|]
   ArgObject canNull (Just name) -> addNullable canNull (interfaceTypeOf name)
@@ -107,9 +108,15 @@ argumentType = \case
   ArgString canNull -> addNullable canNull [t|T.Text|]
   ArgArray canNull -> addNullable canNull [t|WlArray|]
   ArgFd -> [t|Fd|]
-  ArgEnum _ _ -> error "TODO"
+  ArgEnum name -> enumTypeOf name
  where
   addNullable = \case
     NonNull -> id
     Nullable -> \typ -> [t|Maybe $typ|]
   interfaceTypeOf name = scannedType (lead name)
+  enumTypeOf name = do
+    let qualName = fromDotted parent name
+        typ = scannedType qualName
+    scannedEnumType qualName >>= \case
+      SimpleEnum -> typ
+      BitField -> [t|Flags $typ|]

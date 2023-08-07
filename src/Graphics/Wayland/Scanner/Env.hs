@@ -4,11 +4,15 @@ module Graphics.Wayland.Scanner.Env (
   QualifiedName (..),
   lead,
   subName,
+  fromDotted,
   Scan (..),
   ScanEnv (..),
+  liftQ,
   runScan,
   scanNewType,
   scannedType,
+  notifyEnum,
+  scannedEnumType,
   NamingScheme (..),
   aQualified,
 ) where
@@ -19,6 +23,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Monoid (Ap (..))
 import Data.Text qualified as T
+import Graphics.Wayland.Scanner.Types (EnumType)
 import Language.Haskell.TH qualified as TH
 
 -- | Qualified name as list of texts.
@@ -35,6 +40,14 @@ lead dom = QualifiedName (NE.singleton dom)
 subName :: QualifiedName -> [T.Text] -> QualifiedName
 subName (QualifiedName ls) sub = QualifiedName (NE.appendList ls sub)
 
+-- | If dots are present, take it as a qualified name.
+-- Otherwise, use the specified name instead.
+fromDotted :: QualifiedName -> T.Text -> QualifiedName
+fromDotted parent text = case T.splitOn (T.pack ".") text of
+  [] -> error "impossible"
+  [name] -> subName parent [name]
+  begin : trailing -> QualifiedName (begin NE.:| trailing)
+
 -- | Environment for scanning operation.
 --
 -- Utilizes ReaderT-IO pattern, since TH.Q can perform IO.
@@ -42,21 +55,26 @@ data ScanEnv = ScanEnv
   { -- | Prefix of the protocol.
     prefix :: T.Text,
     -- | Scanned types indexed by the protocol-qualified name.
-    scannedTypes :: IORef (M.Map QualifiedName TH.Name)
+    scannedTypes :: IORef (M.Map QualifiedName TH.Name),
+    enumTypes :: IORef (M.Map QualifiedName EnumType)
   }
 
 -- | Base monad for scanning & codegen operations.
 newtype Scan a = Scan (ReaderT ScanEnv TH.Q a)
-  deriving newtype (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad, MonadFail)
   deriving (Semigroup, Monoid) via (Ap Scan a)
 
 instance TH.Quote Scan where
   newName :: String -> Scan TH.Name
   newName name = Scan (lift $ TH.newName name)
 
+liftQ :: TH.Q a -> Scan a
+liftQ = Scan . lift
+
 runScan :: T.Text -> Scan a -> TH.Q a
 runScan prefix (Scan runner) = do
   scannedTypes <- TH.runIO $ newIORef M.empty
+  enumTypes <- TH.runIO $ newIORef M.empty
   runReaderT runner ScanEnv{..}
 
 withEnv :: (ScanEnv -> IO a) -> Scan a
@@ -77,7 +95,17 @@ scanNewType qualName = do
 scannedType :: QualifiedName -> Scan TH.Type
 scannedType qualName = do
   scannedT <- withEnv $ \env -> (M.!? qualName) <$> readIORef env.scannedTypes
-  maybe (error $ "Type for " <> show qualName <> " not found") TH.conT scannedT
+  maybe (fail $ "Type for " <> show qualName <> " not found") TH.conT scannedT
+
+-- ? Consider Enum type separately?
+notifyEnum :: QualifiedName -> EnumType -> Scan ()
+notifyEnum qualName enumType = do
+  withEnv $ \env -> modifyIORef env.enumTypes (M.insert qualName enumType)
+
+scannedEnumType :: QualifiedName -> Scan EnumType
+scannedEnumType qualName = do
+  scannedEnum <- withEnv $ \env -> (M.!? qualName) <$> readIORef env.enumTypes
+  maybe (fail $ "Enum for " <> show qualName <> " not found") pure scannedEnum
 
 data NamingScheme = HsConstructor | HsVariable
 

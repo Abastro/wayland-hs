@@ -72,5 +72,5 @@ data ArgumentType
   | ArgArray CanNull
   | ArgFd
   | -- | Considered separately on codegen.
-    ArgEnum EnumType T.Text
+    ArgEnum T.Text
   deriving (Show)

@@ -16,6 +16,11 @@ class Flag a where
 -- | Type denoting a bitfield of flags.
 newtype Flags a = InternalMkFlag Word -- Encoded as a phantom type now.
 
+-- Placeholder for now, need to think about this.
+instance Show (Flags a) where
+  show :: Flags a -> String
+  show _ = "Flags"
+
 hasFlag :: (Flag a) => a -> Flags a -> Bool
 hasFlag tar (InternalMkFlag bitfield) = toTest .&. bitfield == toTest
  where

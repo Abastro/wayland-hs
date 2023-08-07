@@ -1,5 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Graphics.Wayland.Scanner.Generate.GenTypes (
   generateAllTypes,
@@ -42,24 +42,31 @@ generateInterfaceTypes interface = do
 -- | Generate the enum attached to each interface.
 generateEnums :: QualifiedName -> EnumSpec -> Scan [TH.Dec]
 generateEnums parent enum = do
-  enumType <- scanNewType (subName parent [enum.enumName])
+  enumType <- scanNewType enumQualName
+  notifyEnum enumQualName enum.enumType
+
   entries <- entryPairsOf (toList enum.enumEntries)
   enumDec <- TH.dataD (pure []) enumType [] Nothing (simpleC . fst <$> entries) [derives]
-  instances <- enumInstanceDecl (TH.conT enumType) entries enum.enumType
+  instances <- enumInstanceDec (TH.conT enumType) entries enum.enumType
   pure (enumDec : instances)
  where
+  enumQualName = subName parent [enum.enumName]
   derives = TH.derivClause Nothing [[t|Show|], [t|Eq|], [t|Ord|]]
   entryPairsOf = traverse $ \entry ->
     (,entry.entryValue) <$> aQualified HsConstructor (subName parent [entry.entryName])
   simpleC name = TH.normalC name []
 
-enumInstanceDecl :: Scan TH.Type -> [(TH.Name, Word)] -> EnumType -> Scan [TH.Dec]
-enumInstanceDecl typ entryPairs = \case
+enumInstanceDec :: Scan TH.Type -> [(TH.Name, Word)] -> EnumType -> Scan [TH.Dec]
+enumInstanceDec typ entryPairs = \case
   SimpleEnum ->
     [d|
       instance Enum $typ where
         fromEnum = $(TH.lamCaseE $ uncurry nameToVal <$> entryPairs)
         toEnum = $(TH.lamCaseE $ uncurry valToName <$> entryPairs)
+
+      instance ArgumentAtom $typ where
+        withAtom enum = withAtom (EnumAtom enum)
+        peekAtom arg = unEnumAtom <$> peekAtom arg
       |]
   BitField ->
     [d|

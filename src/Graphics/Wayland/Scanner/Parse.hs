@@ -93,7 +93,11 @@ parseArgument = simpleTag "arg" $ \attrMap -> do
   Just argName <- pure (attrText attrMap "name")
   Just allowNull <- pure (canNull <$> attrFlag attrMap "allow-null")
   let mayInterface = attrText attrMap "interface"
+      mayEnum = attrText attrMap "enum"
   argType <- case attr2str <$> attrMap M.!? "type" of
+    Just _
+      | Just enum <- mayEnum -> -- Type is ignored - Word should work well in most cases.
+          pure $ ArgEnum enum
     Just "int" -> pure ArgInt
     Just "uint" -> pure ArgUInt
     Just "fixed" -> pure ArgInt -- TODO Fixed type

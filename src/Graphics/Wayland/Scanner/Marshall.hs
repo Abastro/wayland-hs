@@ -1,6 +1,8 @@
 module Graphics.Wayland.Scanner.Marshall (
   AsArguments (..),
   ArgumentAtom (..),
+  EnumAtom (..),
+  unEnumAtom,
 ) where
 
 import Data.ByteString qualified as BS
@@ -10,9 +12,9 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word
 import Foreign (Ptr, nullPtr, peek, with)
+import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Util (Argument, WlArray, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
-import Graphics.Wayland.Scanner.Flag
 
 -- | Arguments record which could be marshalled into wl_argument array.
 class AsArguments arg where
@@ -77,8 +79,20 @@ instance ArgumentAtom (Ptr p) where
   peekAtom :: Argument -> IO (Ptr p)
   peekAtom arg = pure $ argumentToPtr arg
 
-instance Flag a => ArgumentAtom (Flags a) where
-  withAtom :: Flag a => Flags a -> (Argument -> IO b) -> IO b
+-- | To have shorter templated code.
+newtype EnumAtom a = EnumAtom a
+
+unEnumAtom :: EnumAtom a -> a
+unEnumAtom (EnumAtom a) = a
+
+instance (Enum a) => ArgumentAtom (EnumAtom a) where
+  withAtom :: (Enum a) => EnumAtom a -> (Argument -> IO b) -> IO b
+  withAtom atom act = act $ wordToArgument (fromIntegral . fromEnum . unEnumAtom $ atom)
+  peekAtom :: (Enum a) => Argument -> IO (EnumAtom a)
+  peekAtom arg = pure $ (EnumAtom . toEnum . fromIntegral) (argumentToWord arg)
+
+instance (Flag a) => ArgumentAtom (Flags a) where
+  withAtom :: (Flag a) => Flags a -> (Argument -> IO b) -> IO b
   withAtom flags act = act $ wordToArgument (fromFlags flags)
-  peekAtom :: Flag a => Argument -> IO (Flags a)
+  peekAtom :: (Flag a) => Argument -> IO (Flags a)
   peekAtom arg = pure $ toFlags (argumentToWord arg)
