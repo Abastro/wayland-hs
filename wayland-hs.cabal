@@ -33,7 +33,6 @@ library
     Graphics.Wayland.Protocol.Types
   other-modules:
     Graphics.ForeignUtil
-    Graphics.Wayland.Scanner.Naming
   default-extensions:
     LambdaCase
     RecordWildCards

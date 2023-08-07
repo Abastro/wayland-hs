@@ -9,7 +9,6 @@ module Graphics.Wayland.Scanner.Generate.GenTypes (
 import Foreign
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Marshall
-import Graphics.Wayland.Scanner.Naming
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
 import Data.Foldable

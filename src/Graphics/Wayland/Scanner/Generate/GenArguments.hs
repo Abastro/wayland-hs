@@ -13,7 +13,6 @@ import Data.Traversable
 import Data.Word
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Marshall
-import Graphics.Wayland.Scanner.Naming
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Util (WlArray)
 import Language.Haskell.TH qualified as TH
@@ -42,10 +41,11 @@ generateSignalArgument interfaceName signal = do
   fieldsQ = argumentField qualSignal <$> toList signal.arguments
 
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
-argumentField _ arg = TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
+argumentField _ arg = do
+  field <- aQualified HsVariable $ lead arg.argName
+  TH.varBangType field $ TH.bangType strict (argumentType arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
-  field = aQualified HsVariable $ lead arg.argName
 
 -- |
 --   Generates:
