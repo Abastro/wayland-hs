@@ -3,14 +3,13 @@
 
 module Graphics.Wayland.Scanner.Generate.GenTypes (
   generateAllTypes,
-  generateInterfaceType,
+  generateInterfaceTypes,
 ) where
 
 import Data.Foldable
-import Data.Text qualified as T
-import Data.Traversable
 import Foreign
 import Graphics.Wayland.Scanner.Env
+import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
@@ -19,13 +18,13 @@ import Language.Haskell.TH qualified as TH
 
 generateAllTypes :: ProtocolSpec -> Scan [TH.Dec]
 generateAllTypes protocol = do
-  fold <$> traverse generateInterfaceType protocol.interfaces
+  fold <$> traverse generateInterfaceTypes protocol.interfaces
 
-generateInterfaceType :: InterfaceSpec -> Scan [TH.Dec]
-generateInterfaceType interface = do
+-- | Generate the interface type and relevant enum types.
+generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
+generateInterfaceTypes interface = do
   interfaceType <- scanNewType (lead interface.ifName)
   let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
-      derives = TH.derivClause Nothing [[t|ArgumentAtom|]]
   typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr [derives]
   let typeName = TH.nameBase interfaceType
   instances <-
@@ -33,28 +32,41 @@ generateInterfaceType interface = do
       instance Show $(TH.conT interfaceType) where
         show _ = typeName
       |]
-  pure (typeDec : instances)
+  -- Then, enums
+  enums <- fold <$> traverse (generateEnums (lead interface.ifName)) interface.enums
+  pure (typeDec : instances <> enums)
  where
+  derives = TH.derivClause Nothing [[t|ArgumentAtom|]]
   noBang = TH.bang TH.noSourceUnpackedness TH.noSourceStrictness
 
 -- | Generate the enum attached to each interface.
 generateEnums :: QualifiedName -> EnumSpec -> Scan [TH.Dec]
 generateEnums parent enum = do
   enumType <- scanNewType (subName parent [enum.enumName])
-  enumDec <- TH.dataD (pure []) enumType [] Nothing (entryConstructor <$> toList enum.enumEntries) [derives]
-  instances <-
-    [d|
-      instance Enum $(TH.conT enumType)
-      |]
-  pure [enumDec]
+  entries <- entryPairsOf (toList enum.enumEntries)
+  enumDec <- TH.dataD (pure []) enumType [] Nothing (simpleC . fst <$> entries) [derives]
+  instances <- enumInstanceDecl (TH.conT enumType) entries enum.enumType
+  pure (enumDec : instances)
  where
-  entryPairs = for (toList enum.enumEntries) $ \entry ->
+  derives = TH.derivClause Nothing [[t|Show|], [t|Eq|], [t|Ord|]]
+  entryPairsOf = traverse $ \entry ->
     (,entry.entryValue) <$> aQualified HsConstructor (subName parent [entry.entryName])
+  simpleC name = TH.normalC name []
 
-  entryName :: EnumEntry -> Scan TH.Name
-  entryName entry = aQualified HsConstructor (subName parent [entry.entryName])
-  entryConstructor :: EnumEntry -> Scan TH.Con
-  entryConstructor entry = do
-    name <- entryName entry
-    TH.normalC name []
-  derives = TH.derivClause Nothing [[t|Show|], [t|Eq|], [t|Ord|], [t|Bounded|]]
+enumInstanceDecl :: Scan TH.Type -> [(TH.Name, Word)] -> EnumType -> Scan [TH.Dec]
+enumInstanceDecl typ entryPairs = \case
+  SimpleEnum ->
+    [d|
+      instance Enum $typ where
+        fromEnum = $(TH.lamCaseE $ uncurry nameToVal <$> entryPairs)
+        toEnum = $(TH.lamCaseE $ uncurry valToName <$> entryPairs)
+      |]
+  BitField ->
+    [d|
+      instance Flag $typ where
+        flagBits = $(TH.lamCaseE $ uncurry nameToVal <$> entryPairs)
+      |]
+ where
+  nameToVal name (val :: Word) = simpleMatch (TH.conP name []) [e|val|]
+  valToName name (val :: Word) = simpleMatch (TH.litP . TH.IntegerL $ fromIntegral val) (TH.conE name)
+  simpleMatch pat val = TH.match pat (TH.normalB val) []

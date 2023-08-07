@@ -12,6 +12,7 @@ import Data.Word
 import Foreign (Ptr, nullPtr, peek, with)
 import Graphics.Wayland.Util (Argument, WlArray, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
+import Graphics.Wayland.Scanner.Flag
 
 -- | Arguments record which could be marshalled into wl_argument array.
 class AsArguments arg where
@@ -75,3 +76,9 @@ instance ArgumentAtom (Ptr p) where
   withAtom ptr act = act $ ptrToArgument ptr
   peekAtom :: Argument -> IO (Ptr p)
   peekAtom arg = pure $ argumentToPtr arg
+
+instance Flag a => ArgumentAtom (Flags a) where
+  withAtom :: Flag a => Flags a -> (Argument -> IO b) -> IO b
+  withAtom flags act = act $ wordToArgument (fromFlags flags)
+  peekAtom :: Flag a => Argument -> IO (Flags a)
+  peekAtom arg = pure $ toFlags (argumentToWord arg)

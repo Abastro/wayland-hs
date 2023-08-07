@@ -67,16 +67,13 @@ parseInterface = elementAttrIn ["interface"] $ \_ attrMap -> do
   Just version <- pure (attrInt attrMap "version")
   _ <- optional $ element ["description"]
   interfaceEntries <- V.fromList <$> many (parseSignal <|> EEnum <$> parseEnum)
-  let requests = V.mapMaybe getRequest interfaceEntries
-      events = V.mapMaybe getEvent interfaceEntries
-  pure InterfaceSpec{ifName, version, requests, events}
+  let (requests, events, enums) = foldMap partitions interfaceEntries
+  pure InterfaceSpec{ifName, version, requests, events, enums}
  where
-  getRequest = \case
-    ESignal Request signal -> Just signal
-    _ -> Nothing
-  getEvent = \case
-    ESignal Event signal -> Just signal
-    _ -> Nothing
+  partitions = \case
+    ESignal Request signal -> (V.singleton signal, V.empty, V.empty)
+    ESignal Event signal -> (V.empty, V.singleton signal, V.empty)
+    EEnum enum -> (V.empty, V.empty, V.singleton enum)
 
 -- ? How to handle "since" ?
 parseSignal :: XMLParser InterfaceEntry

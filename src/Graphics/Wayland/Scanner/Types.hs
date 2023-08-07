@@ -26,7 +26,8 @@ data InterfaceSpec = InterfaceSpec
   { ifName :: T.Text,
     version :: Int,
     requests :: V.Vector SignalSpec,
-    events :: V.Vector SignalSpec
+    events :: V.Vector SignalSpec,
+    enums :: V.Vector EnumSpec
   }
   deriving (Show)
 
