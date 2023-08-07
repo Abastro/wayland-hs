@@ -70,10 +70,10 @@ scanNewType qualName = do
 -- ? Local scopes?
 
 -- | A scanned type.
-scannedType :: QualifiedName -> Scan TH.Name
+scannedType :: QualifiedName -> Scan TH.Type
 scannedType qualName = do
   scannedT <- withEnv $ \env -> (M.!? qualName) <$> readIORef env.scannedTypes
-  maybe (error $ "Type for " <> show qualName <> " not found") pure scannedT
+  maybe (error $ "Type for " <> show qualName <> " not found") TH.conT scannedT
 
 data NamingScheme = HsConstructor | HsVariable
 

@@ -111,4 +111,4 @@ argumentType = \case
   addNullable = \case
     NonNull -> id
     Nullable -> \typ -> [t|Maybe $typ|]
-  interfaceTypeOf name = TH.ConT <$> scannedType (lead name)
+  interfaceTypeOf name = scannedType (lead name)
