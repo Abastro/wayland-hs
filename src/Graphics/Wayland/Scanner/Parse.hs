@@ -3,6 +3,7 @@ module Graphics.Wayland.Scanner.Parse (
   parseProtocol,
 ) where
 
+import Data.Foldable
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -65,10 +66,10 @@ parseInterface :: XMLParser InterfaceSpec
 parseInterface = elementAttrIn ["interface"] $ \_ attrMap -> do
   ifName <- maybe (fail "interface is missing name") pure (attrText attrMap "name")
   Just version <- pure (attrInt attrMap "version")
-  _ <- optional $ element ["description"]
+  ifDescribe <- optional parseDescription
   interfaceEntries <- V.fromList <$> many (parseSignal <|> EEnum <$> parseEnum)
   let (requests, events, enums) = foldMap partitions interfaceEntries
-  pure InterfaceSpec{ifName, version, requests, events, enums}
+  pure InterfaceSpec{ifName, version, ifDescribe, requests, events, enums}
  where
   partitions = \case
     ESignal Request signal -> (V.singleton signal, V.empty, V.empty)
@@ -79,9 +80,9 @@ parseInterface = elementAttrIn ["interface"] $ \_ attrMap -> do
 parseSignal :: XMLParser InterfaceEntry
 parseSignal = elementAttrIn ["request", "event"] $ \name attrMap -> do
   Just sigName <- pure (attrText attrMap "name")
-  _ <- optional $ element ["description"]
+  sigDescribe <- optional parseDescription
   arguments <- V.fromList <$> many parseArgument
-  pure $ ESignal (signalType name) SignalSpec{sigName, arguments}
+  pure $ ESignal (signalType name) SignalSpec{sigName, sigDescribe, arguments}
  where
   signalType = \case
     "request" -> Request
@@ -117,9 +118,9 @@ parseEnum :: XMLParser EnumSpec
 parseEnum = elementAttrIn ["enum"] $ \_ attrMap -> do
   Just enumName <- pure $ attrText attrMap "name"
   Just enumType <- pure $ enumTypeOf <$> attrFlag attrMap "bitfield"
-  _ <- optional $ element ["description"]
+  enumDescribe <- optional parseDescription
   enumEntries <- V.fromList <$> many parseEnumEntry
-  pure EnumSpec{enumName, enumType, enumEntries}
+  pure EnumSpec{enumName, enumType, enumDescribe, enumEntries}
  where
   enumTypeOf flag = if flag then BitField else SimpleEnum
 
@@ -128,3 +129,9 @@ parseEnumEntry = simpleTag "entry" $ \attrMap -> do
   Just entryName <- pure $ attrText attrMap "name"
   Just entryValue <- pure $ fromIntegral <$> attrInt attrMap "value"
   pure EnumEntry{entryName, entryValue}
+
+parseDescription :: XMLParser Description
+parseDescription = elementAttrIn ["description"] $ \_ attrMap -> do
+  Just summary <- pure $ attrText attrMap "summary"
+  describe <- fmap fold . optional $ T.pack <$> text
+  pure Description{summary, describe}

@@ -11,6 +11,7 @@ module Graphics.Wayland.Scanner.Types (
   CanNull (..),
   EnumType (..),
   ArgumentType (..),
+  Description (..),
 ) where
 
 import Data.Text qualified as T
@@ -25,6 +26,7 @@ data ProtocolSpec = ProtocolSpec
 data InterfaceSpec = InterfaceSpec
   { ifName :: T.Text,
     version :: Int,
+    ifDescribe :: Maybe Description,
     requests :: V.Vector SignalSpec,
     events :: V.Vector SignalSpec,
     enums :: V.Vector EnumSpec
@@ -35,6 +37,7 @@ data SignalType = Request | Event
   deriving (Show)
 data SignalSpec = SignalSpec
   { sigName :: T.Text,
+    sigDescribe :: Maybe Description,
     arguments :: V.Vector ArgumentSpec
   }
   deriving (Show)
@@ -45,6 +48,7 @@ data EnumType = SimpleEnum | BitField
 data EnumSpec = EnumSpec
   { enumName :: T.Text,
     enumType :: EnumType,
+    enumDescribe :: Maybe Description,
     enumEntries :: V.Vector EnumEntry
   }
   deriving (Show)
@@ -74,3 +78,11 @@ data ArgumentType
   | -- | Considered separately on codegen.
     ArgEnum T.Text
   deriving (Show)
+
+data Description = Description
+  { summary :: T.Text,
+    describe :: T.Text
+  }
+instance Show Description where
+  show :: Description -> String
+  show Description{summary} = "Description " <> show summary
