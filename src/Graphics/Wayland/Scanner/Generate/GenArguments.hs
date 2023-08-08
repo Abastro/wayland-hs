@@ -3,7 +3,7 @@
 
 module Graphics.Wayland.Scanner.Generate.GenArguments (
   generateAllArguments,
-  generateSignalArgument,
+  generateMessageArgument,
 ) where
 
 import Data.Foldable
@@ -26,17 +26,17 @@ generateAllArguments :: ProtocolSpec -> Scan [TH.Dec]
 generateAllArguments protocol = foldMap genForInterface protocol.interfaces
  where
   genForInterface interface =
-    foldMap (generateSignalArgument $ lead interface.ifName) (interface.requests <> interface.events)
+    foldMap (generateMessageArgument $ lead interface.ifName) (interface.requests <> interface.events)
 
 -- | Generate argument type for specific signal.
 --
 -- The interface types must have been introduced first for this to work properly.
-generateSignalArgument :: QualifiedName -> SignalSpec -> Scan [TH.Dec]
-generateSignalArgument parent signal = do
-  argsType <- scanNewType $ subName parent [signal.sigName, T.pack "arg"]
-  fields <- traverse (argumentField parent) (toList signal.arguments)
+generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
+generateMessageArgument parent message = do
+  argsType <- scanNewType $ subName parent [message.msgName, T.pack "arg"]
+  fields <- traverse (argumentField parent) (toList message.arguments)
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
-  docTypeDec <- addDescribe signal.sigDescribe typeDec
+  docTypeDec <- addDescribe message.msgDescribe typeDec
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (docTypeDec : instances)
  where

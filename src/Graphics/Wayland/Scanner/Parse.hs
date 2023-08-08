@@ -52,14 +52,16 @@ elementAttrIn possibleTags inParser = withElement possibleTags $
   \attrMap theElement@(Elem qname _ _) -> do
     interior theElement $ inParser (localName qname) attrMap
 
+-- See wayland.dtd
 parseProtocol :: XMLParser ProtocolSpec
 parseProtocol = elementAttrIn ["protocol"] $ \_ attrMap -> do
   Just prName <- pure (attrText attrMap "name")
   _ <- optional $ element ["copyright"]
+  _ <- optional $ element ["description"]
   interfaces <- V.fromList <$> many parseInterface
   pure ProtocolSpec{prName, interfaces}
 
-data InterfaceEntry = ESignal !SignalType !SignalSpec | EEnum EnumSpec
+data InterfaceEntry = ERequest !MessageSpec | EEvent !MessageSpec | EEnum !EnumSpec
   deriving (Show)
 
 parseInterface :: XMLParser InterfaceSpec
@@ -67,26 +69,26 @@ parseInterface = elementAttrIn ["interface"] $ \_ attrMap -> do
   ifName <- maybe (fail "interface is missing name") pure (attrText attrMap "name")
   Just version <- pure (attrInt attrMap "version")
   ifDescribe <- optional parseDescription
-  interfaceEntries <- V.fromList <$> many (parseSignal <|> EEnum <$> parseEnum)
+  interfaceEntries <- V.fromList <$> many (parseMessage <|> EEnum <$> parseEnum)
   let (requests, events, enums) = foldMap partitions interfaceEntries
   pure InterfaceSpec{ifName, version, ifDescribe, requests, events, enums}
  where
   partitions = \case
-    ESignal Request signal -> (V.singleton signal, V.empty, V.empty)
-    ESignal Event signal -> (V.empty, V.singleton signal, V.empty)
+    ERequest message -> (V.singleton message, V.empty, V.empty)
+    EEvent message -> (V.empty, V.singleton message, V.empty)
     EEnum enum -> (V.empty, V.empty, V.singleton enum)
 
 -- ? How to handle "since" ?
-parseSignal :: XMLParser InterfaceEntry
-parseSignal = elementAttrIn ["request", "event"] $ \name attrMap -> do
-  Just sigName <- pure (attrText attrMap "name")
-  sigDescribe <- optional parseDescription
+parseMessage :: XMLParser InterfaceEntry
+parseMessage = elementAttrIn ["request", "event"] $ \elemName attrMap -> do
+  Just msgName <- pure (attrText attrMap "name")
+  msgDescribe <- optional parseDescription
   arguments <- V.fromList <$> many parseArgument
-  pure $ ESignal (signalType name) SignalSpec{sigName, sigDescribe, arguments}
+  pure $ asEntry elemName MessageSpec{msgName, msgDescribe, arguments}
  where
-  signalType = \case
-    "request" -> Request
-    "event" -> Event
+  asEntry = \case
+    "request" -> ERequest
+    "event" -> EEvent
     _ -> error "blame the cosmic rays flipping random bits"
 
 parseArgument :: XMLParser ArgumentSpec

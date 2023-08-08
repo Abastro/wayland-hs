@@ -3,8 +3,8 @@
 module Graphics.Wayland.Scanner.Types (
   ProtocolSpec (..),
   InterfaceSpec (..),
-  SignalType (..),
-  SignalSpec (..),
+  MessageType (..),
+  MessageSpec (..),
   EnumSpec (..),
   EnumEntry (..),
   ArgumentSpec (..),
@@ -27,17 +27,18 @@ data InterfaceSpec = InterfaceSpec
   { ifName :: T.Text,
     version :: Int,
     ifDescribe :: Maybe Description,
-    requests :: V.Vector SignalSpec,
-    events :: V.Vector SignalSpec,
+    requests :: V.Vector MessageSpec,
+    events :: V.Vector MessageSpec,
     enums :: V.Vector EnumSpec
   }
   deriving (Show)
 
-data SignalType = Request | Event
+-- TODO Destructor requests
+data MessageType = Request | Event
   deriving (Show)
-data SignalSpec = SignalSpec
-  { sigName :: T.Text,
-    sigDescribe :: Maybe Description,
+data MessageSpec = MessageSpec
+  { msgName :: T.Text,
+    msgDescribe :: Maybe Description,
     arguments :: V.Vector ArgumentSpec
   }
   deriving (Show)
@@ -69,6 +70,10 @@ data ArgumentSpec = ArgumentSpec
 data CanNull = NonNull | Nullable
   deriving (Show)
 
+-- TODO new_id is just Word32, but tagging might be better. Also it gives returns on the calling end.
+-- TODO new_id seems to be only on requests
+-- TODO new_id without type specified:
+-- TODO   replaced with (string interface, uint version, uint ident).
 data ArgumentType
   = ArgInt
   | ArgUInt
