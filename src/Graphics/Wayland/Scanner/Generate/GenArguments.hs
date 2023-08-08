@@ -19,8 +19,6 @@ import Graphics.Wayland.Util (WlArray)
 import Language.Haskell.TH qualified as TH
 import System.Posix.Types (Fd)
 
--- TODO Disambiguate fields instead of disallowing
-
 -- | Generate all arguments.
 --
 -- Note that this was written assuming that DuplicateRecordFields extension is enabled.
@@ -108,8 +106,8 @@ argumentType parent = \case
   ArgUInt -> [t|Word32|]
   ArgObject canNull (Just name) -> addNullable canNull (interfaceTypeOf name)
   ArgObject _ Nothing -> [t|Word32|] -- Placeholder for typeless case
-  ArgNewID canNull (Just name) -> addNullable canNull (interfaceTypeOf name)
-  ArgNewID _ Nothing -> [t|Word32|] -- Placeholder as well
+  ArgNewID canNull (Just name) -> addNullable canNull [t|NewID $(interfaceTypeOf name)|]
+  ArgNewID _ Nothing -> [t|Word32|] -- TODO This need to be fixed, see Types.hs
   ArgString canNull -> addNullable canNull [t|T.Text|]
   ArgArray canNull -> addNullable canNull [t|WlArray|]
   ArgFd -> [t|Fd|]

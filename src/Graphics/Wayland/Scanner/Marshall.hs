@@ -1,4 +1,5 @@
 module Graphics.Wayland.Scanner.Marshall (
+  NewID (..),
   AsArguments (..),
   ArgumentAtom (..),
   EnumAtom (..),
@@ -8,6 +9,7 @@ module Graphics.Wayland.Scanner.Marshall (
 import Data.ByteString qualified as BS
 import Data.ByteString.Unsafe qualified as BS
 import Data.Int
+import Data.Kind (Type)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word
@@ -15,6 +17,10 @@ import Foreign (Ptr, nullPtr, peek, with)
 import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Util (Argument, WlArray, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
+
+-- | Denotes a new_id argument.
+newtype NewID (a :: Type) = NewID Word32 -- Dunno where this should go
+  deriving (Show, ArgumentAtom)
 
 -- | Arguments record which could be marshalled into wl_argument array.
 class AsArguments arg where
