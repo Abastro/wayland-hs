@@ -33,7 +33,7 @@ generateInterfaceTypes interface = do
       instance Show $(TH.conT interfaceType) where
         show _ = typeName
       |]
-  -- Then, enums
+  --
   enums <- foldMap (generateEnums domain) interface.enums
   pure (docTypeDec : instances <> enums)
  where

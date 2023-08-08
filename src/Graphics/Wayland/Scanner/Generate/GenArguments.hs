@@ -19,6 +19,8 @@ import Graphics.Wayland.Util (WlArray)
 import Language.Haskell.TH qualified as TH
 import System.Posix.Types (Fd)
 
+-- TODO Disambiguate fields instead of disallowing
+
 -- | Generate all arguments.
 --
 -- Note that this was written assuming that DuplicateRecordFields extension is enabled.
@@ -33,7 +35,7 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 -- The interface types must have been introduced first for this to work properly.
 generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
 generateMessageArgument parent message = do
-  argsType <- scanNewType $ subName parent [message.msgName, T.pack "arg"]
+  argsType <- scanNewType $ subName parent [message.msgName]
   fields <- traverse (argumentField parent) (toList message.arguments)
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec
@@ -44,11 +46,11 @@ generateMessageArgument parent message = do
 
 -- Note: parent here is the interface.
 argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
-argumentField parent arg = do
+argumentField parentIf arg = do
   field <- aQualified HsVariable $ lead arg.argName
   -- TODO: duplicate record fields does not admit this - how to get around?
   -- addSummaryToName field arg.argSummary
-  TH.varBangType field $ TH.bangType strict (argumentType parent arg.argType)
+  TH.varBangType field $ TH.bangType strict (argumentType parentIf arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
 
