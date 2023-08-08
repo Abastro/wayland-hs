@@ -13,6 +13,7 @@ module Graphics.Wayland.Scanner.Env (
   scannedType,
   notifyEnum,
   scannedEnumType,
+  scanNewField,
   NamingScheme (..),
   aQualified,
 ) where
@@ -22,6 +23,7 @@ import Data.IORef
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Monoid (Ap (..))
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Graphics.Wayland.Scanner.Types (EnumType)
 import Language.Haskell.TH qualified as TH
@@ -56,7 +58,9 @@ data ScanEnv = ScanEnv
     prefix :: T.Text,
     -- | Scanned types indexed by the protocol-qualified name.
     scannedTypes :: IORef (M.Map QualifiedName TH.Name),
-    enumTypes :: IORef (M.Map QualifiedName EnumType)
+    enumTypes :: IORef (M.Map QualifiedName EnumType),
+    -- | Known fields, mainly to disambiguate on the rare cases.
+    knownFields :: IORef (S.Set TH.Name)
   }
 
 -- | Base monad for scanning & codegen operations.
@@ -75,6 +79,7 @@ runScan :: T.Text -> Scan a -> TH.Q a
 runScan prefix (Scan runner) = do
   scannedTypes <- TH.runIO $ newIORef M.empty
   enumTypes <- TH.runIO $ newIORef M.empty
+  knownFields <- TH.runIO $ newIORef S.empty
   runReaderT runner ScanEnv{..}
 
 withEnv :: (ScanEnv -> IO a) -> Scan a
@@ -107,7 +112,22 @@ scannedEnumType qualName = do
   scannedEnum <- withEnv $ \env -> (M.!? qualName) <$> readIORef env.enumTypes
   maybe (fail $ "Enum for " <> show qualName <> " not found") pure scannedEnum
 
-data NamingScheme = HsConstructor | HsVariable
+-- | Create a new field.
+scanNewField :: QualifiedName -> Scan TH.Name
+scanNewField qualName = do
+  candidate <- aQualified HsField qualName
+  withEnv $ \env -> do
+    knowns <- readIORef env.knownFields
+    let fieldName = avoidingDupe knowns candidate
+    modifyIORef env.knownFields (S.insert fieldName)
+    pure fieldName
+ where
+  avoidingDupe knowns candidate =
+    if candidate `S.notMember` knowns
+      then candidate
+      else avoidingDupe knowns (TH.mkName $ TH.nameBase candidate <> "_")
+
+data NamingScheme = HsConstructor | HsVariable | HsField
 
 -- TODO Hide this as implementation detail
 
@@ -116,28 +136,27 @@ data NamingScheme = HsConstructor | HsVariable
 -- The input should be C-style names.
 --
 -- Note: substitution is performed for specific words.
---
--- >>> aQualified HsConstructor (subName (lead $ T.pack "foo_bar") [T.pack "baz_foo"])
--- FooBarBazFoo
--- >>> aQualified HsVariable (subName (lead $ T.pack "foo_bar") [T.pack "baz_foo"])
--- fooBarBazFoo
 aQualified :: NamingScheme -> QualifiedName -> Scan TH.Name
 aQualified scheme (QualifiedName names) = do
   Scan . asks $ \env ->
-    TH.mkName . T.unpack . substitute . casing . dropPrefix env.prefix $ splitBar
+    TH.mkName . T.unpack . substitute . casing $ dropPrefix env.prefix <$> splitBar
  where
-  splitBar = NE.toList names >>= T.splitOn (T.pack "_")
+  splitBar = T.splitOn (T.pack "_") <$> names
 
   substitute = \case
     name
       | name == T.pack "class" -> T.pack "klass"
       | name == T.pack "id" -> T.pack "ident"
       | otherwise -> name
-  casing = case scheme of
-    HsConstructor -> T.concat . map T.toTitle
-    HsVariable -> \case
+  casing cNames = case scheme of
+    HsConstructor -> T.concat . map T.toTitle $ concat cNames
+    HsVariable -> case concat cNames of
       [] -> T.empty
-      begin : trailing -> T.concat (begin : map T.toTitle trailing)
+      begin : trailing -> T.concat $ begin : map T.toTitle trailing
+    HsField -> case (NE.init cNames, NE.last cNames) of
+      ([], begin : trailing) -> T.concat $ begin : map T.toTitle trailing
+      (parents, name) -> T.concat $ map (T.take 1) (concat parents) <> map T.toTitle name
+
   dropPrefix prefix = \case
     begin : trailing | begin == prefix -> trailing
     texts -> texts

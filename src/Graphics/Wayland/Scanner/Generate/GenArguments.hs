@@ -36,7 +36,7 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
 generateMessageArgument parent message = do
   argsType <- scanNewType $ subName parent [message.msgName, T.pack "Args"]
-  fields <- traverse (argumentField parent) (toList message.arguments)
+  fields <- traverse (argumentField parent message.msgName) (toList message.arguments)
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
@@ -45,11 +45,11 @@ generateMessageArgument parent message = do
   derives = TH.derivClause Nothing [[t|Show|]]
 
 -- Note: parent here is the interface.
-argumentField :: QualifiedName -> ArgumentSpec -> Scan TH.VarBangType
-argumentField parentIf arg = do
-  field <- aQualified HsVariable $ lead arg.argName
+argumentField :: QualifiedName -> T.Text -> ArgumentSpec -> Scan TH.VarBangType
+argumentField parentIf msgName arg = do
+  field <- scanNewField $ subName parentIf [msgName, arg.argName]
   -- TODO: duplicate record fields does not admit this - how to get around?
-  -- addSummaryToName field arg.argSummary
+  -- addSummaryToLocation (TH.DeclDoc field) arg.argSummary
   TH.varBangType field $ TH.bangType strict (argumentType parentIf arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict

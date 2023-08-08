@@ -1,5 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 
 module Graphics.Wayland.Protocol.Types where
 
