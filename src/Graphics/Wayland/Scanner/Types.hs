@@ -3,7 +3,7 @@
 module Graphics.Wayland.Scanner.Types (
   ProtocolSpec (..),
   InterfaceSpec (..),
-  MessageType (..),
+  MessageKind (..),
   MessageSpec (..),
   EnumSpec (..),
   EnumEntry (..),
@@ -33,11 +33,15 @@ data InterfaceSpec = InterfaceSpec
   }
   deriving (Show)
 
+-- ? How to handle "since" ?
+
 -- TODO Destructor requests
-data MessageType = Request | Event
+data MessageKind = Request | Event
   deriving (Show)
 data MessageSpec = MessageSpec
   { msgName :: T.Text,
+    msgType :: Maybe T.Text,
+    msgSince :: Maybe Int,
     msgDescribe :: Maybe Description,
     arguments :: V.Vector ArgumentSpec
   }
@@ -48,6 +52,7 @@ data EnumType = SimpleEnum | BitField
 
 data EnumSpec = EnumSpec
   { enumName :: T.Text,
+    enumSince :: Maybe Int,
     enumType :: EnumType,
     enumDescribe :: Maybe Description,
     enumEntries :: V.Vector EnumEntry
@@ -56,7 +61,8 @@ data EnumSpec = EnumSpec
 data EnumEntry = EnumEntry
   { entryName :: T.Text,
     entryValue :: Word,
-    entrySummary :: Maybe T.Text
+    entrySummary :: Maybe T.Text,
+    entrySince :: Maybe Int
   }
   deriving (Show)
 
