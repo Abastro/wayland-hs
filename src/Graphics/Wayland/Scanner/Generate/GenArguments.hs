@@ -35,7 +35,7 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 -- The interface types must have been introduced first for this to work properly.
 generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
 generateMessageArgument parent message = do
-  argsType <- scanNewType $ subName parent [message.msgName]
+  argsType <- scanNewType $ subName parent [message.msgName, T.pack "Args"]
   fields <- traverse (argumentField parent) (toList message.arguments)
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec
