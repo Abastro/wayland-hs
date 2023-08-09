@@ -8,6 +8,7 @@ module Graphics.Wayland.Scanner.Marshall (
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Unsafe qualified as BS
+import Data.Fixed (Fixed (..))
 import Data.Int
 import Data.Kind (Type)
 import Data.Text qualified as T
@@ -15,7 +16,7 @@ import Data.Text.Encoding qualified as T
 import Data.Word
 import Foreign (Ptr, nullPtr, peek, with)
 import Graphics.Wayland.Scanner.Flag
-import Graphics.Wayland.Util (Argument, WlArray, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
+import Graphics.Wayland.Util (Argument, WlArray, WlFixed, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
 
 -- | Denotes a new_id argument.
@@ -61,6 +62,13 @@ instance ArgumentAtom Int32 where
   withAtom num act = act $ wordToArgument (fromIntegral num)
   peekAtom :: Argument -> IO Int32
   peekAtom arg = pure $ fromIntegral (argumentToWord arg)
+
+-- Fixed type converts its internals
+instance ArgumentAtom WlFixed where
+  withAtom :: WlFixed -> (Argument -> IO a) -> IO a
+  withAtom (MkFixed inner) act = act $ wordToArgument (fromIntegral inner)
+  peekAtom :: Argument -> IO WlFixed
+  peekAtom arg = pure $ (MkFixed . fromIntegral) (argumentToWord arg)
 
 instance ArgumentAtom Fd where
   withAtom :: Fd -> (Argument -> IO a) -> IO a

@@ -88,6 +88,7 @@ data ArgumentType
 data ArgPrimitive
   = ArgInt
   | ArgUInt
+  | ArgFixed
   | ArgEnum T.Text
   | ArgFd
   deriving (Show)

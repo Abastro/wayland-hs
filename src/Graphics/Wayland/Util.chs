@@ -2,7 +2,7 @@ module Graphics.Wayland.Util (
   Message(..),
   Interface(..),
   WlArray(..), WlArrayPtr,
-  WlFixed,
+  WlRes, WlFixed,
   Argument(..), ArgumentPtr, ptrToArgument, argumentToPtr, wordToArgument, argumentToWord,
   Dispatcher, CDispatcher, withDispatcher,
 )
@@ -10,6 +10,7 @@ where
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Unsafe qualified as BS
+import Data.Fixed
 import Foreign
 import Foreign.C.Types
 
@@ -36,7 +37,10 @@ instance Storable WlArray where
     {# set array->alloc #} arrPtr (fromIntegral len)
     {# set array->data #} arrPtr (castPtr bsPtr)
 
-data WlFixed
+data WlRes
+instance HasResolution WlRes where
+  resolution _ = 256 -- 8 bits of precision
+type WlFixed = Fixed WlRes
 
 -- | Data to feed wl_resource_post_event_array.
 --

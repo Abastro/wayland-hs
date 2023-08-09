@@ -141,7 +141,7 @@ getArgumentType :: T.Text -> Maybe T.Text -> String -> XMLParser (Either ArgPrim
 getArgumentType argName mayInterface = \case
   "int" -> pure $ Left ArgInt
   "uint" -> pure $ Left ArgUInt
-  "fixed" -> pure $ Left ArgInt -- TODO Fixed type
+  "fixed" -> pure $ Left ArgFixed
   "object" -> pure $ Right (maybe ArgObjectAny ArgObject mayInterface)
   "new_id" -> pure $ Right (maybe ArgNewIDDyn ArgNewID mayInterface)
   "string" -> pure $ Right ArgString

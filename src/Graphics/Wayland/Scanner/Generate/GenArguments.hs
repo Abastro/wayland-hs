@@ -16,7 +16,7 @@ import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
-import Graphics.Wayland.Util (WlArray)
+import Graphics.Wayland.Util (WlArray, WlFixed)
 import Language.Haskell.TH qualified as TH
 import System.Posix.Types (Fd)
 
@@ -103,10 +103,12 @@ argumentInstances argsType fieldNames =
 
 argumentType :: QualifiedName -> ArgumentType -> Scan TH.Type
 argumentType parent = \case
-  PrimType ArgInt -> [t|Int32|]
-  PrimType ArgUInt -> [t|Word32|]
-  PrimType ArgFd -> [t|Fd|]
-  PrimType (ArgEnum name) -> enumTypeOf name
+  PrimType typ -> case typ of
+    ArgInt -> [t|Int32|]
+    ArgUInt -> [t|Word32|]
+    ArgFixed -> [t|WlFixed|]
+    ArgFd -> [t|Fd|]
+    ArgEnum name -> enumTypeOf name
   -- References can be nullable
   RefType canNull typ -> addNullable canNull $ case typ of
     ArgObject name -> interfaceTypeOf name
