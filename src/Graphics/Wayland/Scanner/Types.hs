@@ -11,6 +11,8 @@ module Graphics.Wayland.Scanner.Types (
   CanNull (..),
   EnumType (..),
   ArgumentType (..),
+  ArgPrimitive (..),
+  ArgReference (..),
   Description (..),
 ) where
 
@@ -76,20 +78,27 @@ data ArgumentSpec = ArgumentSpec
 data CanNull = NonNull | Nullable
   deriving (Show)
 
--- TODO new_id is just Word32, but tagging might be better. Also it gives returns on the calling end.
--- TODO new_id seems to be only on requests
--- TODO new_id without type specified:
--- TODO   replaced with (string interface, uint version, uint ident).
+-- TODO new_id gives returns on the calling end.
+-- ? new_id seems to be only on requests
 data ArgumentType
+  = PrimType ArgPrimitive
+  | RefType CanNull ArgReference
+  deriving (Show)
+
+data ArgPrimitive
   = ArgInt
   | ArgUInt
-  | ArgObject CanNull (Maybe T.Text)
-  | ArgNewID CanNull (Maybe T.Text)
-  | ArgString CanNull
-  | ArgArray CanNull
+  | ArgEnum T.Text
   | ArgFd
-  | -- | Considered separately on codegen.
-    ArgEnum T.Text
+  deriving (Show)
+
+data ArgReference
+  = ArgObject T.Text
+  | ArgObjectAny
+  | ArgNewID T.Text
+  | ArgNewIDDyn
+  | ArgString
+  | ArgArray
   deriving (Show)
 
 data Description = Description

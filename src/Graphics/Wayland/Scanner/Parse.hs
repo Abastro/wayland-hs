@@ -86,7 +86,7 @@ parseMessage = elementAttrIn ["request", "event"] $ \elemName attrMap -> do
   let msgType = attrText attrMap "type"
       msgSince = attrInt attrMap "since"
   msgDescribe <- optional parseDescription
-  arguments <- V.fromList <$> many parseArgument
+  arguments <- V.fromList . concat <$> many parseArgument
   pure $ asEntry elemName MessageSpec{msgName, msgType, msgSince, msgDescribe, arguments}
  where
   asEntry = \case
@@ -113,7 +113,7 @@ parseEnumEntry = simpleTag "entry" $ \attrMap -> do
       entrySince = attrInt attrMap "since"
   pure EnumEntry{entryName, entryValue, entrySummary, entrySince}
 
-parseArgument :: XMLParser ArgumentSpec
+parseArgument :: XMLParser [ArgumentSpec]
 parseArgument = elementAttrIn ["arg"] $ \_ attrMap -> do
   _ <- optional $ element ["description"]
   Just argName <- pure $ attrText attrMap "name"
@@ -121,23 +121,33 @@ parseArgument = elementAttrIn ["arg"] $ \_ attrMap -> do
   let argSummary = attrText attrMap "summary"
       mayInterface = attrText attrMap "interface"
   Just allowNull <- pure (canNull <$> attrFlag attrMap "allow-null")
-  let mayEnum = attrText attrMap "enum"
-  argType <- case argTypeName of
-    _ | Just enum <- mayEnum -> pure $ ArgEnum enum -- Type is ignored - Word should work well in most cases.
-    "int" -> pure ArgInt
-    "uint" -> pure ArgUInt
-    "fixed" -> pure ArgInt -- TODO Fixed type
-    "object" -> do
-      pure $ ArgObject allowNull mayInterface
-    "new_id" -> do
-      pure $ ArgNewID allowNull mayInterface
-    "string" -> pure $ ArgString allowNull
-    "array" -> pure $ ArgArray allowNull
-    "fd" -> pure ArgFd
-    _ -> fail $ "invalid type encountered for argument: " <> show argName
-  pure ArgumentSpec{argName, argType, argSummary}
+
+  argType <-
+    either PrimType (RefType allowNull) <$> case attrText attrMap "enum" of
+      Just enum -> pure $ Left (ArgEnum enum) -- Special-case enum
+      Nothing -> getArgumentType argName mayInterface argTypeName
+
+  pure $ case argType of
+    RefType _ ArgNewIDDyn ->
+      -- Just because 'new_id with interface not specified' do some.. magic
+      [argInterface, argVersion, ArgumentSpec{argName, argType, argSummary}]
+    _ -> [ArgumentSpec{argName, argType, argSummary}]
  where
   canNull flag = if flag then Nullable else NonNull
+  argInterface = ArgumentSpec (T.pack "interface") (RefType NonNull ArgString) Nothing
+  argVersion = ArgumentSpec (T.pack "version") (PrimType ArgUInt) Nothing
+
+getArgumentType :: T.Text -> Maybe T.Text -> String -> XMLParser (Either ArgPrimitive ArgReference)
+getArgumentType argName mayInterface = \case
+  "int" -> pure $ Left ArgInt
+  "uint" -> pure $ Left ArgUInt
+  "fixed" -> pure $ Left ArgInt -- TODO Fixed type
+  "object" -> pure $ Right (maybe ArgObjectAny ArgObject mayInterface)
+  "new_id" -> pure $ Right (maybe ArgNewIDDyn ArgNewID mayInterface)
+  "string" -> pure $ Right ArgString
+  "array" -> pure $ Right ArgArray
+  "fd" -> pure $ Left ArgFd
+  _ -> fail $ "invalid type encountered for argument: " <> show argName
 
 parseDescription :: XMLParser Description
 parseDescription = elementAttrIn ["description"] $ \_ attrMap -> do

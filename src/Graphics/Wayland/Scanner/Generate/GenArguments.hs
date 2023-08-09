@@ -10,6 +10,7 @@ import Data.Foldable
 import Data.Int
 import Data.Text qualified as T
 import Data.Word
+import Foreign (Ptr)
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Generate.Documentation
@@ -102,16 +103,18 @@ argumentInstances argsType fieldNames =
 
 argumentType :: QualifiedName -> ArgumentType -> Scan TH.Type
 argumentType parent = \case
-  ArgInt -> [t|Int32|]
-  ArgUInt -> [t|Word32|]
-  ArgObject canNull (Just name) -> addNullable canNull (interfaceTypeOf name)
-  ArgObject _ Nothing -> [t|Word32|] -- Placeholder for typeless case
-  ArgNewID canNull (Just name) -> addNullable canNull [t|NewID $(interfaceTypeOf name)|]
-  ArgNewID _ Nothing -> [t|Word32|] -- TODO This need to be fixed, see Types.hs
-  ArgString canNull -> addNullable canNull [t|T.Text|]
-  ArgArray canNull -> addNullable canNull [t|WlArray|]
-  ArgFd -> [t|Fd|]
-  ArgEnum name -> enumTypeOf name
+  PrimType ArgInt -> [t|Int32|]
+  PrimType ArgUInt -> [t|Word32|]
+  PrimType ArgFd -> [t|Fd|]
+  PrimType (ArgEnum name) -> enumTypeOf name
+  -- References can be nullable
+  RefType canNull typ -> addNullable canNull $ case typ of
+    ArgObject name -> interfaceTypeOf name
+    ArgObjectAny -> [t|Ptr ()|]
+    ArgNewID name -> [t|NewID $(interfaceTypeOf name)|]
+    ArgNewIDDyn -> [t|NewID ()|]
+    ArgString -> [t|T.Text|]
+    ArgArray -> [t|WlArray|]
  where
   addNullable = \case
     NonNull -> id
