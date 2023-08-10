@@ -21,6 +21,7 @@ library
   exposed-modules:
     Graphics.Flag
 
+    Graphics.Wayland.Remote
     Graphics.Wayland.Util
     Graphics.Wayland.Server.Resource
     Graphics.Wayland.Client.Proxy

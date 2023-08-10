@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Graphics.Wayland.Scanner.Generate.GenMethods (
@@ -11,14 +12,13 @@ import Data.Foldable
 import Data.Text qualified as T
 import Foreign
 import Graphics.Flag (makeFlags)
-import Graphics.Wayland.Client.Proxy (Proxy (..), proxyMarshalArrayFlags)
+import Graphics.Wayland.Client.Proxy (proxyMarshalArrayFlags)
+import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
-import Graphics.Wayland.Server.Resource (Resource (..), resourcePostEventArray)
+import Graphics.Wayland.Server.Resource (resourcePostEventArray)
 import Language.Haskell.TH qualified as TH
-
-data End = EndClient | EndServer
 
 generateAllMessages :: End -> ProtocolSpec -> Scan [TH.Dec]
 generateAllMessages end protocol = foldMap (generateInterfaceMessages end) protocol.interfaces
@@ -37,33 +37,32 @@ generateInterfaceMessages end interface = do
 generateMessageSend :: End -> QualifiedName -> Int -> MessageSpec -> Scan [TH.Dec]
 generateMessageSend end parent idx message = do
   -- The environment is orthogonal, so we "scan new type" here.
-  interfaceType <- scanNewType parent
-  argsType <- TH.ConT <$> scanNewType (subName parent [message.msgName, T.pack "args"])
+  ifName <- scanNewType parent
+  argsName <- scanNewType (subName parent [message.msgName, T.pack "args"])
   fnName <- aQualified HsVariable $ subName parent [message.msgName]
-  let patt = TH.conP interfaceType [TH.varP ptr]
+  let interfaceType = TH.conT ifName
+      argsType = TH.conT argsName
   case end of
     EndServer -> do
-      msgSig <- TH.sigD fnName [t|$(TH.conT interfaceType) -> $(pure argsType) -> IO ()|]
-      msgDec <- TH.funD fnName [TH.clause [patt] (TH.normalB [e|sendEvent opcode $(TH.varE ptr)|]) []]
+      msgSig <- TH.sigD fnName [t|Remote EndServer $interfaceType -> $argsType EndServer -> IO ()|]
+      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendEvent opcode|]) []]
       pure [msgSig, msgDec]
     EndClient -> do
-      msgSig <- TH.sigD fnName [t|$(TH.conT interfaceType) -> $(pure argsType) -> IO ()|]
-      msgDec <- TH.funD fnName [TH.clause [patt] (TH.normalB [e|sendRequest opcode $(TH.varE ptr)|]) []]
+      msgSig <- TH.sigD fnName [t|Remote EndClient $interfaceType -> $argsType EndClient -> IO ()|]
+      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendRequest opcode|]) []]
       pure [msgSig, msgDec]
  where
-  ptr = TH.mkName "ptr"
-
   opcode :: Word32
   opcode = fromIntegral idx
 
-sendEvent :: (AsArguments arg) => Word32 -> Ptr a -> arg -> IO ()
-sendEvent opcode resourcePtr args =
-  withArgs args $ \argList -> withArray argList $ \argArray -> do
-    resourcePostEventArray (Resource $ castPtr resourcePtr) opcode argArray
+sendEvent :: (AsArguments arg) => Word32 -> Remote EndServer a -> arg -> IO ()
+sendEvent opcode remote args =
+  withArgs args $ \argList -> withArray argList $ \argArray ->
+    resourcePostEventArray (untypeRemote remote) opcode argArray
 
-sendRequest :: (AsArguments arg) => Word32 -> Ptr a -> arg -> IO ()
-sendRequest opcode proxyPtr args = do
-  -- TODO Destructor & Returns
-  _ <- withArgs args $ \argList -> withArray argList $ \argArray -> do
-    proxyMarshalArrayFlags (Proxy $ castPtr proxyPtr) opcode Nothing 0 (makeFlags []) argArray
+sendRequest :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO ()
+sendRequest opcode remote args = do
+  -- TODO Destructor & Returning proxy
+  _ <- withArgs args $ \argList -> withArray argList $ \argArray ->
+    proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (makeFlags []) argArray
   pure ()

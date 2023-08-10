@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DataKinds #-}
 
 module Graphics.Wayland.Protocol.Client where
 

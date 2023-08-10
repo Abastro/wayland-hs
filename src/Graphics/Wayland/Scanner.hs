@@ -1,9 +1,9 @@
 module Graphics.Wayland.Scanner (
   emitProtocolTypes,
   emitProtocolEnd,
-  module Graphics.Wayland.Scanner.Marshal,
+  module Graphics.Wayland.Remote,
   module Graphics.Flag,
-  End (..),
+  module Graphics.Wayland.Scanner.Marshal,
   Int32,
   Word32,
   WlArray (..),
@@ -16,9 +16,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word32)
 import Graphics.Flag
+import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.GenArguments (generateAllArguments)
-import Graphics.Wayland.Scanner.Generate.GenMethods (End (..), generateAllMessages)
+import Graphics.Wayland.Scanner.Generate.GenMethods (generateAllMessages)
 import Graphics.Wayland.Scanner.Generate.GenTypes (generateAllTypes)
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Parse

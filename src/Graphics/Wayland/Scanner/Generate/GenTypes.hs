@@ -6,15 +6,13 @@ module Graphics.Wayland.Scanner.Generate.GenTypes (
 ) where
 
 import Data.Foldable
-import Foreign
 import Graphics.Flag
+import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
-
--- ? Proper separation between server and client resource
 
 generateAllTypes :: ProtocolSpec -> Scan [TH.Dec]
 generateAllTypes protocol = foldMap generateInterfaceTypes protocol.interfaces
@@ -23,22 +21,23 @@ generateAllTypes protocol = foldMap generateInterfaceTypes protocol.interfaces
 generateInterfaceTypes :: InterfaceSpec -> Scan [TH.Dec]
 generateInterfaceTypes interface = do
   interfaceType <- scanNewType domain
-  let constr = TH.normalC interfaceType [TH.bangType noBang [t|Ptr $(TH.conT interfaceType)|]]
-  typeDec <- TH.newtypeD (pure []) interfaceType [] Nothing constr [derives]
+  typeDec <- TH.dataD (pure []) interfaceType [] Nothing [] []
   docTypeDec <- addDescribe interface.ifDescribe typeDec
+
   let typeName = TH.nameBase interfaceType
+      version = interface.version
   instances <-
     [d|
-      instance Show $(TH.conT interfaceType) where
-        show _ = typeName
+      instance HasInterface $(TH.conT interfaceType) where
+        interfaceName _ = typeName
+        interfaceVersion _ = version
+        asCInterface _ = undefined
       |]
   --
   enums <- foldMap (generateEnums domain) interface.enums
   pure (docTypeDec : instances <> enums)
  where
   domain = lead interface.ifName
-  derives = TH.derivClause Nothing [[t|ArgumentAtom|]]
-  noBang = TH.bang TH.noSourceUnpackedness TH.noSourceStrictness
 
 -- | Generate the enum attached to each interface.
 generateEnums :: QualifiedName -> EnumSpec -> Scan [TH.Dec]
@@ -49,6 +48,7 @@ generateEnums parent enum = do
   entries <- traverse (enumEntry parent) (toList enum.enumEntries)
   enumDec <- TH.dataD (pure []) enumType [] Nothing (simpleC . fst <$> entries) [derives]
   docEnumDec <- addDescribe enum.enumDescribe enumDec
+
   instances <- enumInstanceDec (TH.conT enumType) entries enum.enumType
   pure (docEnumDec : instances)
  where

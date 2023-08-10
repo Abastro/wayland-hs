@@ -1,5 +1,4 @@
 module Graphics.Wayland.Client.Proxy (
-  Proxy(..),
   proxyMarshalArrayFlags,
 )
 where
@@ -9,6 +8,7 @@ import Foreign
 
 import Graphics.ForeignUtil
 import Graphics.Flag
+import Graphics.Wayland.Remote
 {# import Graphics.Wayland.Util #}
 
 #include <wayland-client.h>
@@ -16,7 +16,7 @@ import Graphics.Flag
 
 {# typedef uint32_t Word32 #}
 
-{# pointer *proxy as Proxy newtype #}
+{# pointer *proxy as RemoteClient newtype nocode #}
 
 data MarshalFlag = MarshalDestroy
 instance Flag MarshalFlag where
@@ -34,10 +34,10 @@ flagMarshall = fromIntegral . fromFlags
 -- >            uint32_t flags,
 -- >            union wl_argument *args);
 {# fun unsafe proxy_marshal_array_flags as ^ {
-    `Proxy',
+    `RemoteClient',
     `Word32',
     nullable `Maybe Interface',
     `Word32',
     flagMarshall `Flags MarshalFlag',
     `ArgumentPtr'
-  } -> `Proxy' #}
+  } -> `RemoteClient' #}

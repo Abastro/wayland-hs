@@ -9,8 +9,8 @@ import Data.Foldable
 import Data.Int
 import Data.Text qualified as T
 import Data.Word
-import Foreign (Ptr)
 import Graphics.Flag
+import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshal
@@ -34,28 +34,31 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
 generateMessageArgument parent message = do
   argsType <- scanNewType $ subName parent [message.msgName, T.pack "args"]
-  fields <- traverse (argumentField parent message.msgName) (toList message.arguments)
-  typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
+  fields <- traverse (argumentField parent (TH.varT typeVar) message.msgName) (toList message.arguments)
+  let kinded = TH.KindedTV typeVar () (TH.ConT ''End)
+  typeDec <- TH.dataD (pure []) argsType [kinded] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec
+
   instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
   pure (docTypeDec : instances)
  where
+  typeVar = TH.mkName "e"
   derives = TH.derivClause Nothing [[t|Show|]]
 
 -- Note: parent here is the interface.
-argumentField :: QualifiedName -> T.Text -> ArgumentSpec -> Scan TH.VarBangType
-argumentField parentIf msgName arg = do
+argumentField :: QualifiedName -> Scan TH.Type -> T.Text -> ArgumentSpec -> Scan TH.VarBangType
+argumentField parentIf theEnd msgName arg = do
   field <- scanNewField $ subName parentIf [msgName, arg.argName]
-  -- TODO: duplicate record fields does not admit this - how to get around?
+  -- TODO: NoRecordFieldSelectors does not admit documentation - how to get around?
   -- addSummaryToLocation (TH.DeclDoc field) arg.argSummary
-  TH.varBangType field $ TH.bangType strict (argumentType parentIf arg.argType)
+  TH.varBangType field $ TH.bangType strict (argumentType parentIf theEnd arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
 
 -- |
 --   Generates:
 --
--- > instance AsArguments FooBarArg where
+-- > instance AsArguments (FooBarArg e) where
 -- >   withArgs args emit =
 -- >     withAtom args.foo $ \fooP ->
 -- >       withAtom args.bar $ \barP ->
@@ -69,7 +72,7 @@ argumentField parentIf msgName arg = do
 argumentInstances :: TH.Name -> [TH.Name] -> Scan [TH.Dec]
 argumentInstances argsType fieldNames =
   [d|
-    instance AsArguments $(TH.conT argsType) where
+    instance AsArguments ($(TH.conT argsType) e) where
       argLength _ = numArgs
       withArgs $(wildOnZero $ TH.varP args) $(TH.varP emit) =
         $(foldr withAtomOn withArgsRet fieldNames)
@@ -100,8 +103,8 @@ argumentInstances argsType fieldNames =
   args = TH.mkName "args"
   emit = TH.mkName "emit"
 
-argumentType :: QualifiedName -> ArgumentType -> Scan TH.Type
-argumentType parent = \case
+argumentType :: QualifiedName -> Scan TH.Type -> ArgumentType -> Scan TH.Type
+argumentType parent theEnd = \case
   PrimType typ -> case typ of
     ArgInt -> [t|Int32|]
     ArgUInt -> [t|Word32|]
@@ -110,10 +113,10 @@ argumentType parent = \case
     ArgEnum name -> enumTypeOf name
   -- References can be nullable
   RefType canNull typ -> addNullable canNull $ case typ of
-    ArgObject name -> interfaceTypeOf name
-    ArgObjectAny -> [t|Ptr ()|]
-    ArgNewID name -> [t|NewID $(interfaceTypeOf name)|]
-    ArgNewIDDyn -> [t|NewID ()|]
+    ArgObject name -> [t|Remote $theEnd $(interfaceTypeOf name)|]
+    ArgObjectAny -> [t|RemoteAny $theEnd|]
+    ArgNewID name -> [t|NewID $theEnd $(interfaceTypeOf name)|]
+    ArgNewIDDyn -> [t|NewID $theEnd ()|]
     ArgString -> [t|T.Text|]
     ArgArray -> [t|WlArray|]
  where

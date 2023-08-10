@@ -1,5 +1,4 @@
 module Graphics.Wayland.Scanner.Marshal (
-  NewID (..),
   AsArguments (..),
   ArgumentAtom (..),
   EnumAtom (..),
@@ -11,22 +10,18 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Unsafe qualified as BS
 import Data.Fixed (Fixed (..))
 import Data.Int
-import Data.Kind (Type)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word
-import Foreign (Ptr, nullPtr, peek, with)
+import Foreign (nullPtr, peek, with)
 import Graphics.Flag
+import Graphics.Wayland.Remote
 import Graphics.Wayland.Util (Argument, WlArray, WlFixed, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
+import Language.Haskell.TH qualified as TH
 import System.Posix.Types
-import qualified Language.Haskell.TH as TH
 
 trivial :: TH.Q [TH.Dec]
 trivial = pure []
-
--- | Denotes a new_id argument.
-newtype NewID (a :: Type) = NewID Word32 -- Dunno where this should go
-  deriving (Show, ArgumentAtom)
 
 -- | Arguments record which could be marshalled into wl_argument array.
 class AsArguments arg where
@@ -91,12 +86,23 @@ instance (ArgumentAtom t) => ArgumentAtom (Maybe t) where
     n | n == nullPtr -> pure Nothing
     _ -> Just <$> peekAtom arg
 
--- For deriving business.
-instance ArgumentAtom (Ptr p) where
-  withAtom :: Ptr p -> (Argument -> IO a) -> IO a
-  withAtom ptr act = act $ ptrToArgument ptr
-  peekAtom :: Argument -> IO (Ptr p)
-  peekAtom arg = pure $ argumentToPtr arg
+instance ArgumentAtom (RemoteAny e) where
+  withAtom :: RemoteAny e -> (Argument -> IO a) -> IO a
+  withAtom (RemoteAny ptr) act = act $ ptrToArgument ptr
+  peekAtom :: Argument -> IO (RemoteAny e)
+  peekAtom arg = pure . RemoteAny $ argumentToPtr arg
+
+instance (HasInterface a) => ArgumentAtom (Remote e a) where
+  withAtom :: Remote e a -> (Argument -> IO b) -> IO b
+  withAtom remote = withAtom (untypeRemote remote)
+  peekAtom :: Argument -> IO (Remote e a)
+  peekAtom arg = typeRemote <$> peekAtom arg
+
+instance ArgumentAtom (NewID e a) where
+  withAtom :: NewID e a -> (Argument -> IO b) -> IO b
+  withAtom (NewID ident) = withAtom ident
+  peekAtom :: Argument -> IO (NewID e a)
+  peekAtom arg = NewID <$> peekAtom arg
 
 -- | To have shorter templated code.
 newtype EnumAtom a = EnumAtom a
