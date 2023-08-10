@@ -17,7 +17,7 @@ import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
-import Graphics.Wayland.Util (WlArray, WlFixed, Fd)
+import Graphics.Wayland.Util (Fd, WlArray, WlFixed)
 import Language.Haskell.TH qualified as TH
 
 -- | Generate all arguments.
@@ -64,6 +64,14 @@ argumentField parentIf theEnd msgName arg = do
 -- >   withArgs (FooBarArg foo bar) = getAp $ foldMap Ap [withArgs foo, withArgs bar]
 -- >   peekArgs = pure FooBarArg <*> peekArgs <*> peekArgs
 argumentInstances :: TH.Name -> [(TH.Name, TH.Type)] -> Scan [TH.Dec]
+argumentInstances argsType [] =
+  -- Special-case 0-argument case
+  [d|
+    instance AsArguments ($(TH.conT argsType) e) where
+      argLength _ = 0
+      withArgs _ = pure []
+      peekArgs = pure $(TH.conE argsType)
+    |]
 argumentInstances argsType fields =
   [d|
     instance AsArguments ($(TH.conT argsType) e) where
