@@ -1,4 +1,5 @@
 module Graphics.Wayland.Client.Proxy (
+  MarshalFlag(..),
   proxyMarshalArrayFlags,
 )
 where

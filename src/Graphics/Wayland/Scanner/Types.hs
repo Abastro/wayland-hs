@@ -4,6 +4,7 @@ module Graphics.Wayland.Scanner.Types (
   ProtocolSpec (..),
   InterfaceSpec (..),
   MessageKind (..),
+  MessageType (..),
   MessageSpec (..),
   EnumSpec (..),
   EnumEntry (..),
@@ -37,12 +38,13 @@ data InterfaceSpec = InterfaceSpec
 
 -- ? How to handle "since" ?
 
--- TODO Destructor requests
 data MessageKind = Request | Event
+  deriving (Show)
+data MessageType = Normal | Destructor
   deriving (Show)
 data MessageSpec = MessageSpec
   { msgName :: T.Text,
-    msgType :: Maybe T.Text,
+    msgType :: MessageType,
     msgSince :: Maybe Int,
     msgDescribe :: Maybe Description,
     arguments :: V.Vector ArgumentSpec

@@ -83,12 +83,15 @@ parseInterface = elementAttrIn ["interface"] $ \_ attrMap -> do
 parseMessage :: XMLParser InterfaceEntry
 parseMessage = elementAttrIn ["request", "event"] $ \elemName attrMap -> do
   Just msgName <- pure (attrText attrMap "name")
-  let msgType = attrText attrMap "type"
+  let msgType = asType $ attrText attrMap "type"
       msgSince = attrInt attrMap "since"
   msgDescribe <- optional parseDescription
   arguments <- V.fromList . concat <$> many parseArgument
   pure $ asEntry elemName MessageSpec{msgName, msgType, msgSince, msgDescribe, arguments}
  where
+  asType = \case
+    Just typ | typ == T.pack "destructor" -> Destructor
+    _ -> Normal
   asEntry = \case
     "request" -> ERequest
     "event" -> EEvent
