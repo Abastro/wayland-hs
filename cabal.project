@@ -1,1 +1,3 @@
-packages: *.cabal
+packages:
+  wayland-util/*.cabal
+  wayland-hs/*.cabal

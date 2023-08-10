@@ -1,6 +1,0 @@
-cradle:
-  cabal:
-    - path: "./src"
-      component: "lib:wayland-hs"
-    - path: "./test"
-      component: "test:wayland-hs-test"
