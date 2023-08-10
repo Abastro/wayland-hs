@@ -1,8 +1,6 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Graphics.Wayland.Scanner.Generate.GenMethods (
-  End (..),
   generateAllMessages,
   generateInterfaceMessages,
 ) where
@@ -45,32 +43,32 @@ generateMessageSend end parent idx message = do
       argsType = TH.conT argsName
   case end of
     EndServer -> do
-      msgSig <- TH.sigD fnName [t|Remote EndServer $interfaceType -> $argsType EndServer -> IO ()|]
+      msgSig <- TH.sigD fnName [t|Remote EServer $interfaceType -> $argsType EServer -> IO ()|]
       msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendEvent idx|]) []]
       pure [msgSig, msgDec]
     EndClient | Just returnType <- mayReturn -> do
-      msgSig <- TH.sigD fnName [t|Remote EndClient $interfaceType -> $argsType EndClient -> IO $returnType|]
+      msgSig <- TH.sigD fnName [t|Remote EClient $interfaceType -> $argsType EClient -> IO $returnType|]
       msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendRequestRet idx|]) []]
       pure [msgSig, msgDec]
     EndClient -> do
-      msgSig <- TH.sigD fnName [t|Remote EndClient $interfaceType -> $argsType EndClient -> IO ()|]
+      msgSig <- TH.sigD fnName [t|Remote EClient $interfaceType -> $argsType EClient -> IO ()|]
       msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendRequest idx|]) []]
       pure [msgSig, msgDec]
  where
   Monoid.First mayReturn = foldMap (\arg -> Monoid.First $ getReturnType arg.argType) message.arguments
 
-sendEvent :: (AsArguments arg) => Word32 -> Remote EndServer a -> arg -> IO ()
+sendEvent :: (AsArguments arg) => Word32 -> Remote EServer a -> arg -> IO ()
 sendEvent opcode remote args =
   withArgs args $ \argList -> withArray argList $ \argArray ->
     resourcePostEventArray (untypeRemote remote) opcode argArray
 
-sendRequest :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO ()
+sendRequest :: (AsArguments arg) => Word32 -> Remote EClient a -> arg -> IO ()
 sendRequest opcode remote args = void (sendRequestPrim opcode remote args)
 
-sendRequestRet :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO (Remote EndClient b)
+sendRequestRet :: (AsArguments arg) => Word32 -> Remote EClient a -> arg -> IO (Remote EClient b)
 sendRequestRet opcode remote args = typeRemote <$> sendRequestPrim opcode remote args
 
-sendRequestPrim :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO (RemoteAny EndClient)
+sendRequestPrim :: (AsArguments arg) => Word32 -> Remote EClient a -> arg -> IO ClientAny
 sendRequestPrim opcode remote args = do
   -- TODO Destructor
   withArgs args $ \argList -> withArray argList $ \argArray ->
@@ -81,5 +79,5 @@ getReturnType :: ArgumentType -> Maybe (Scan TH.Type)
 getReturnType = \case
   FlatType (ArgNewID name) -> Just $ do
     interfaceType <- scanNewType (lead name)
-    [t|Remote EndClient $(TH.conT interfaceType)|]
+    [t|Remote EClient $(TH.conT interfaceType)|]
   _ -> Nothing

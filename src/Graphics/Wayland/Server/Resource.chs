@@ -21,14 +21,14 @@ import Graphics.Wayland.Remote
 -- Why do I have to have this everywhere
 {# typedef uint32_t Word32 #}
 
-{# pointer *resource as RemoteServer newtype nocode #}
+{# pointer *resource as ServerAny newtype nocode #}
 
 {# pointer *client as Client newtype #}
 
-withResourceDispatcher :: Dispatcher RemoteServer -> (FunPtr CDispatcher -> IO a) -> IO a
+withResourceDispatcher :: Dispatcher ServerAny -> (FunPtr CDispatcher -> IO a) -> IO a
 withResourceDispatcher = withDispatcher RemoteAny
 
-type DestroyCallback = RemoteServer -> IO ()
+type DestroyCallback = ServerAny -> IO ()
 foreign import ccall unsafe "wrapper" makeDestroyCallback :: DestroyCallback -> IO (FunPtr DestroyCallback)
 withDestroyCallback :: DestroyCallback -> (FunPtr DestroyCallback -> IO a) -> IO a
 withDestroyCallback func act = do
@@ -54,7 +54,7 @@ withDestroyCallback func act = do
 -- - type=object:  (struct wl_object *) or (struct wl_resource *)
 --
 {# fun unsafe resource_post_event_array as ^ {
-    `RemoteServer',
+    `ServerAny',
     `Word32',
     `ArgumentPtr'
   } -> `()' #}
@@ -70,7 +70,7 @@ withDestroyCallback func act = do
     `Interface',
     `Int',
     `Word32'
-  } -> `RemoteServer' #}
+  } -> `ServerAny' #}
 
 -- | No documentation.
 --
@@ -81,8 +81,8 @@ withDestroyCallback func act = do
 -- >         void *data,
 -- >         wl_resource_destroy_func_t destroy);
 {# fun unsafe resource_set_dispatcher as ^ {
-    `RemoteServer',
-    withResourceDispatcher* `Dispatcher RemoteServer',
+    `ServerAny',
+    withResourceDispatcher* `Dispatcher ServerAny',
     castStablePtrToPtr `StablePtr a',
     withNullPtr- `Ptr ()',
     withDestroyCallback* `DestroyCallback'
@@ -93,5 +93,5 @@ withDestroyCallback func act = do
 -- > struct wl_client *
 -- > wl_resource_get_client(struct wl_resource *resource);
 {# fun unsafe resource_get_client as ^ {
-    `RemoteServer'
+    `ServerAny'
   } -> `Client' #}

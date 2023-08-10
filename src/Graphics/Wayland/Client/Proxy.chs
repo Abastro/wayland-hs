@@ -16,14 +16,14 @@ import Graphics.Wayland.Remote
 
 {# typedef uint32_t Word32 #}
 
-{# pointer *proxy as RemoteClient newtype nocode #}
+{# pointer *proxy as ClientAny newtype nocode #}
 
 data MarshalFlag = MarshalDestroy
 instance Flag MarshalFlag where
   flagBits MarshalDestroy = 1 -- c2hs translates WL_MARSHAL_FLAG_DESTROY literally..
 
-flagMarshall :: Flags MarshalFlag -> Word32
-flagMarshall = fromIntegral . fromFlags
+flagMarshal :: Flags MarshalFlag -> Word32
+flagMarshal = fromIntegral . fromFlags
 
 -- | No documentation.
 -- 
@@ -34,10 +34,10 @@ flagMarshall = fromIntegral . fromFlags
 -- >            uint32_t flags,
 -- >            union wl_argument *args);
 {# fun unsafe proxy_marshal_array_flags as ^ {
-    `RemoteClient',
+    `ClientAny',
     `Word32',
     nullable `Maybe Interface',
     `Word32',
-    flagMarshall `Flags MarshalFlag',
+    flagMarshal `Flags MarshalFlag',
     `ArgumentPtr'
-  } -> `RemoteClient' #}
+  } -> `ClientAny' #}

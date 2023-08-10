@@ -4,8 +4,10 @@ module Graphics.Wayland.Remote (
   End (..),
   Remote,
   RemoteAny (..),
-  RemoteServer,
-  RemoteClient,
+  EClient,
+  EServer,
+  ServerAny,
+  ClientAny,
   NewID (..),
   untypeRemote,
   typeRemote,
@@ -20,6 +22,12 @@ import Foreign (Ptr, Word32)
 -- | An end is either client or server.
 data End = EndClient | EndServer
 
+-- | Type alias for EndClient.
+type EClient = 'EndClient
+
+-- | Type alias for EndServer.
+type EServer = 'EndServer
+
 -- | Representation of a remote resource.
 --
 -- The end represents this end.
@@ -32,8 +40,11 @@ instance Show (RemoteAny e) where
   show :: RemoteAny e -> String
   show _ = "Any"
 
-type RemoteServer = RemoteAny EndServer
-type RemoteClient = RemoteAny EndClient
+-- | Any remote type on the server.
+type ServerAny = RemoteAny EServer
+
+-- | Any remote type on the client.
+type ClientAny = RemoteAny EClient
 
 -- | Denotes a new object the server allocates for the client.
 --
