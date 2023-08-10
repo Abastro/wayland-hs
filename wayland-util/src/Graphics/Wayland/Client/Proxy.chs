@@ -1,6 +1,7 @@
 module Graphics.Wayland.Client.Proxy (
   MarshalFlag(..),
   proxyMarshalArrayFlags,
+  proxyGetVersion,
 )
 where
 
@@ -42,3 +43,11 @@ flagMarshal = fromIntegral . fromFlags
     flagMarshal `Flags MarshalFlag',
     `ArgumentPtr'
   } -> `ClientAny' #}
+
+-- | No documentation.
+--
+-- > uint32_t
+-- > wl_proxy_get_version(struct wl_proxy *proxy);
+{# fun unsafe proxy_get_version as ^ {
+    `ClientAny'    
+  } -> `Word32' #}

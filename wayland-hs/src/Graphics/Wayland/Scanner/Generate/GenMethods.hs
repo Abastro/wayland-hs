@@ -11,9 +11,10 @@ import Data.Monoid qualified as Monoid
 import Data.Text qualified as T
 import Foreign hiding (void)
 import Graphics.Flag (makeFlags, toFlags)
-import Graphics.Wayland.Client.Proxy (MarshalFlag (..), proxyMarshalArrayFlags)
+import Graphics.Wayland.Client.Proxy (MarshalFlag (..), proxyGetVersion, proxyMarshalArrayFlags)
 import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
+import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Server.Resource (resourcePostEventArray)
@@ -41,6 +42,7 @@ generateMessageSend end parent idx message = do
   fnName <- aQualified HsVariable $ subName parent [message.msgName]
   let interfaceType = TH.conT ifName
       argsType = TH.conT argsName
+  addSummaryToLocation (TH.DeclDoc fnName) $ Just (T.pack $ "See '" <> TH.nameBase argsName <> "'.")
   case end of
     EndServer -> do
       msgSig <- TH.sigD fnName [t|Remote EServer $interfaceType -> $argsType EServer -> IO ()|]
@@ -71,22 +73,21 @@ sendEvent opcode remote args = evalContT $ do
   argArray <- ContT (withArray argList)
   lift $ resourcePostEventArray (untypeRemote remote) opcode argArray
 
--- TODO Version
 sendRequest :: (AsArguments arg) => Word32 -> [MarshalFlag] -> Remote EClient a -> arg -> IO ()
 sendRequest opcode flags remote args = evalContT $ do
   argList <- withArgs args
   argArray <- ContT (withArray argList)
-  _ <- lift $ proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (makeFlags flags) argArray
+  version <- lift $ proxyGetVersion (untypeRemote remote)
+  _ <- lift $ proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing version (makeFlags flags) argArray
   pure ()
 
 sendRequestRet :: (AsArguments arg) => Word32 -> Remote EClient a -> arg -> IO (Remote EClient b)
 sendRequestRet opcode remote args = evalContT $ do
   -- TODO Pass interface C struct
-  -- This means complication for wl_registry::bind.
-  -- There should be a way to get around that..
   argList <- withArgs args
   argArray <- ContT (withArray argList)
-  returned <- lift $ proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (toFlags 0) argArray
+  version <- lift $ proxyGetVersion (untypeRemote remote)
+  returned <- lift $ proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing version (toFlags 0) argArray
   pure (typeRemote returned)
 
 -- | Get return type if the "argument" should be a return.
