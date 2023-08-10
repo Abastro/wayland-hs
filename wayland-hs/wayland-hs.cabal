@@ -19,13 +19,6 @@ common warnings
 library
   import:           warnings
   exposed-modules:
-    Graphics.Flag
-
-    Graphics.Wayland.Remote
-    Graphics.Wayland.Util
-    Graphics.Wayland.Server.Resource
-    Graphics.Wayland.Client.Proxy
-
     Graphics.Wayland.Scanner
     Graphics.Wayland.Scanner.Types
     Graphics.Wayland.Scanner.Env
@@ -41,7 +34,6 @@ library
     Graphics.Wayland.Protocol.Server
     Graphics.Wayland.Protocol.Client
   other-modules:
-    Graphics.ForeignUtil
   default-extensions:
     LambdaCase
     RecordWildCards
@@ -57,11 +49,12 @@ library
     vector,
     template-haskell >=2.16,
     HaXml ^>=1.25.13,
+    wayland-util,
   build-tool-depends:
     c2hs:c2hs >=0.28,
   pkgconfig-depends:
-    wayland-client,
-    wayland-server,
+    wayland-client >=1.21,
+    wayland-server >=1.21,
   hs-source-dirs:   src
   default-language: GHC2021
 

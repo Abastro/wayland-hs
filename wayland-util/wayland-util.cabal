@@ -18,8 +18,18 @@ common warnings
 
 library
   import:           warnings
+
   exposed-modules:
-  -- other-modules:
+    Graphics.Flag
+
+    Graphics.Wayland.Remote
+
+    Graphics.Wayland.Util
+    Graphics.Wayland.Client.Proxy
+    Graphics.Wayland.Server.Resource
+  other-modules:
+    Graphics.ForeignUtil
+
   default-extensions:
     LambdaCase
     RecordWildCards
@@ -27,10 +37,16 @@ library
     OverloadedRecordDot
   build-depends:
     base ^>=4.17.1.0,
+    containers,
+    transformers,
+    mtl,
+    bytestring,
+    text,
+    vector,
   build-tool-depends:
     c2hs:c2hs >=0.28,
   pkgconfig-depends:
-    wayland-client,
-    wayland-server,
+    wayland-client >=1.21,
+    wayland-server >=1.21,
   hs-source-dirs:   src
   default-language: GHC2021
