@@ -9,6 +9,7 @@ module Graphics.Wayland.Remote (
   ServerAny,
   ClientAny,
   NewID (..),
+  NewIDAny (..),
   untypeRemote,
   typeRemote,
   CInterface (..),
@@ -17,6 +18,7 @@ module Graphics.Wayland.Remote (
 
 import Data.Coerce
 import Data.Kind
+import Data.Text qualified as T
 import Foreign (Ptr, Word32)
 
 -- | An end is either client or server.
@@ -50,6 +52,15 @@ type ClientAny = RemoteAny EClient
 --
 -- Explicit pointers are passed around on client-allocated objects, so Remote type is used for those.
 newtype NewID (e :: End) (a :: Type) = NewID Word32
+  deriving (Show)
+
+-- | Blanket new_id type, which also carries the information around.
+data NewIDAny (e :: End) = NewIDAny
+  { -- | This one denotes the wayland-style interface name.
+    newIDInterface :: !T.Text,
+    newIDVersion :: !Word32,
+    newID :: !Word32
+  }
   deriving (Show)
 
 -- | Cast to untyped.

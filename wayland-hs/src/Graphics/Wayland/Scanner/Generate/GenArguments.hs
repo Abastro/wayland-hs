@@ -27,15 +27,17 @@ generateAllArguments :: ProtocolSpec -> Scan [TH.Dec]
 generateAllArguments protocol = foldMap genForInterface protocol.interfaces
  where
   genForInterface interface =
-    foldMap (generateMessageArgument $ lead interface.ifName) (interface.requests <> interface.events)
+    foldMap
+      (generateMessageArgument $ lead interface.ifName)
+      (fmap (Request,) interface.requests <> fmap (Event,) interface.events)
 
 -- | Generate argument type for specific signal.
 --
 -- The interface types must have been introduced first for this to work properly.
-generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
-generateMessageArgument parent message = do
+generateMessageArgument :: QualifiedName -> (MessageKind, MessageSpec) -> Scan [TH.Dec]
+generateMessageArgument parent (kind, message) = do
   argsType <- scanNewType $ subName parent [message.msgName, T.pack "args"]
-  fields <- traverse (argumentField parent (TH.varT typeVar) message.msgName) (toList message.arguments)
+  fields <- traverse (argumentField parent kind (TH.varT typeVar) message.msgName) (toList message.arguments)
   let kinded = TH.KindedTV typeVar () (TH.ConT ''End)
   typeDec <- TH.dataD (pure []) argsType [kinded] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec
@@ -47,12 +49,12 @@ generateMessageArgument parent message = do
   derives = TH.derivClause Nothing [[t|Show|]]
 
 -- Note: parent here is the interface.
-argumentField :: QualifiedName -> Scan TH.Type -> T.Text -> ArgumentSpec -> Scan TH.VarBangType
-argumentField parentIf theEnd msgName arg = do
+argumentField :: QualifiedName -> MessageKind -> Scan TH.Type -> T.Text -> ArgumentSpec -> Scan TH.VarBangType
+argumentField parentIf kind theEnd msgName arg = do
   field <- scanNewField $ subName parentIf [msgName, arg.argName]
   -- TODO: NoRecordFieldSelectors does not admit documentation - how to get around?
   -- addSummaryToLocation (TH.DeclDoc field) arg.argSummary
-  TH.varBangType field $ TH.bangType strict (argumentType parentIf theEnd arg.argType)
+  TH.varBangType field $ TH.bangType strict (argumentType parentIf kind theEnd arg.argType)
  where
   strict = TH.bang TH.noSourceUnpackedness TH.sourceStrict
 
@@ -84,17 +86,23 @@ argumentInstances argsType fields =
         $(foldl' (\l r -> [e|$l <*> $r|]) [e|pure $(TH.conE argsType)|] [[e|peekArgs|] | _ <- fields])
     |]
 
--- TODO Client-allocated types should not be NewID.
-argumentType :: QualifiedName -> Scan TH.Type -> ArgumentType -> Scan TH.Type
-argumentType parent theEnd = \case
+argumentType :: QualifiedName -> MessageKind -> Scan TH.Type -> ArgumentType -> Scan TH.Type
+argumentType parent kind theEnd = \case
   FlatType typ -> case typ of
     ArgInt -> [t|Int32|]
     ArgUInt -> [t|Word32|]
     ArgFixed -> [t|WlFixed|]
     ArgFd -> [t|Fd|]
     ArgEnum name -> enumTypeOf name
-    ArgNewID name -> [t|NewID $theEnd $(interfaceTypeOf name)|]
-    ArgNewIDDyn -> [t|NewID $theEnd ()|]
+    -- On Events, new object is allocated by client, so the pointers are directly passed around.
+    ArgNewID name ->
+      if kind == Request
+        then [t|NewID $theEnd $(interfaceTypeOf name)|]
+        else [t|Remote $theEnd $(interfaceTypeOf name)|]
+    ArgNewIDDyn ->
+      if kind == Request
+        then [t|NewIDAny $theEnd|]
+        else [t|RemoteAny $theEnd|]
   -- References can be nullable
   RefType canNull typ -> addNullable canNull $ case typ of
     ArgObject name -> [t|Remote $theEnd $(interfaceTypeOf name)|]

@@ -136,6 +136,20 @@ instance AsArguments (NewID e a) where
   peekArgs :: PeelT Argument IO (NewID e a)
   peekArgs = NewID <$> peekArgs
 
+instance AsArguments (NewIDAny e) where
+  argLength :: proxy (NewIDAny e) -> Int
+  argLength _ = 3
+
+  withArgs :: NewIDAny e -> ContT r IO [Argument]
+  withArgs newID = do
+    ifName <- withArgs newID.newIDInterface
+    ifVersion <- withArgs newID.newIDVersion
+    ident <- withArgs newID.newID
+    pure (ifName <> ifVersion <> ident)
+
+  peekArgs :: PeelT Argument IO (NewIDAny e)
+  peekArgs = NewIDAny <$> peekArgs <*> peekArgs <*> peekArgs
+
 -- | To have shorter templated code.
 newtype EnumAtom a = EnumAtom a
 

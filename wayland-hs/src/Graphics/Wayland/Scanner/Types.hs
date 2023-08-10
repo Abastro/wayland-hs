@@ -39,7 +39,7 @@ data InterfaceSpec = InterfaceSpec
 -- ? How to handle "since" ?
 
 data MessageKind = Request | Event
-  deriving (Show)
+  deriving (Show, Eq)
 data MessageType = Normal | Destructor
   deriving (Show)
 data MessageSpec = MessageSpec

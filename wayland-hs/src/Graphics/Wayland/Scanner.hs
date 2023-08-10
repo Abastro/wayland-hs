@@ -8,6 +8,7 @@ module Graphics.Wayland.Scanner (
   Ap (..),
   Int32,
   Word32,
+  WlFixed,
   WlArray (..),
   Text,
   Fd,
@@ -25,7 +26,7 @@ import Graphics.Wayland.Scanner.Generate.GenMethods (generateAllMessages)
 import Graphics.Wayland.Scanner.Generate.GenTypes (generateAllTypes)
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Parse
-import Graphics.Wayland.Util (Fd, Int32, WlArray (..), Word32)
+import Graphics.Wayland.Util (Fd, Int32, WlArray (..), Word32, WlFixed)
 import Language.Haskell.TH qualified as TH
 
 -- | Emit the protocol types to a module.

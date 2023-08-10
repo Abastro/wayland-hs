@@ -86,7 +86,7 @@ parseMessage = elementAttrIn ["request", "event"] $ \elemName attrMap -> do
   let msgType = asType $ attrText attrMap "type"
       msgSince = attrInt attrMap "since"
   msgDescribe <- optional parseDescription
-  arguments <- V.fromList . concat <$> many parseArgument
+  arguments <- V.fromList <$> many parseArgument
   pure $ asEntry elemName MessageSpec{msgName, msgType, msgSince, msgDescribe, arguments}
  where
   asType = \case
@@ -116,7 +116,7 @@ parseEnumEntry = simpleTag "entry" $ \attrMap -> do
       entrySince = attrInt attrMap "since"
   pure EnumEntry{entryName, entryValue, entrySummary, entrySince}
 
-parseArgument :: XMLParser [ArgumentSpec]
+parseArgument :: XMLParser ArgumentSpec
 parseArgument = elementAttrIn ["arg"] $ \_ attrMap -> do
   _ <- optional $ element ["description"]
   Just argName <- pure $ attrText attrMap "name"
@@ -129,16 +129,9 @@ parseArgument = elementAttrIn ["arg"] $ \_ attrMap -> do
     either FlatType (RefType allowNull) <$> case attrText attrMap "enum" of
       Just enum -> pure $ Left (ArgEnum enum) -- Special-case enum
       Nothing -> getArgumentType argName mayInterface argTypeName
-
-  pure $ case argType of
-    FlatType ArgNewIDDyn ->
-      -- Just because 'new_id with interface not specified' do some.. magic
-      [argInterface, argVersion, ArgumentSpec{argName, argType, argSummary}]
-    _ -> [ArgumentSpec{argName, argType, argSummary}]
+  pure ArgumentSpec{argName, argType, argSummary}
  where
   canNull flag = if flag then Nullable else NonNull
-  argInterface = ArgumentSpec (T.pack "interface") (RefType NonNull ArgString) Nothing
-  argVersion = ArgumentSpec (T.pack "version") (FlatType ArgUInt) Nothing
 
 getArgumentType :: T.Text -> Maybe T.Text -> String -> XMLParser (Either ArgFlat ArgReference)
 getArgumentType argName mayInterface = \case
