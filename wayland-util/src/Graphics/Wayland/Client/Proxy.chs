@@ -61,7 +61,7 @@ flagMarshal = fromIntegral . fromFlags
 -- >       const void * dispatcher_data, void *data);
 {# fun unsafe proxy_add_dispatcher as ^ {
     `ClientAny',
-    withDispatcher* `Dispatcher EClient',
-    castStablePtrToPtr `StablePtr a',
+    withDispatcher* `Dispatcher EClient impl',
+    castStablePtrToPtr `StablePtr impl',
     withNullPtr- `Ptr ()'
   } -> `Int' #}

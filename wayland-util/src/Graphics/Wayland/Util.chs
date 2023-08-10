@@ -95,13 +95,13 @@ argumentToWord (Argument arg) = fromIntegral arg
 --
 -- \return 0 on success, or -1 on failure
 --
-type Dispatcher end = Ptr () -> RemoteAny end -> Word32 -> Message -> Ptr Argument -> IO Int
+type Dispatcher end impl = StablePtr impl -> RemoteAny end -> Word32 -> Message -> Ptr Argument -> IO Int
 type CDispatcher = Ptr () -> Ptr () -> Word32 -> Message -> Ptr Argument -> IO CInt
 foreign import ccall unsafe "wrapper" makeDispatcher :: CDispatcher -> IO (FunPtr CDispatcher)
-withDispatcher :: Dispatcher end -> (FunPtr CDispatcher -> IO a) -> IO a
+withDispatcher :: Dispatcher end impl -> (FunPtr CDispatcher -> IO a) -> IO a
 withDispatcher func act = do
   fnPtr <- makeDispatcher $ \impl targetPtr opcode message argPtr ->
-    fromIntegral <$> func impl (RemoteAny . castPtr $ targetPtr) opcode message argPtr
+    fromIntegral <$> func (castPtrToStablePtr impl) (RemoteAny . castPtr $ targetPtr) opcode message argPtr
   act fnPtr
 
 -- TODO Maybe the dispatcher should be freed properly.

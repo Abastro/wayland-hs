@@ -79,8 +79,8 @@ withDestroyCallback func act = do
 -- >         wl_resource_destroy_func_t destroy);
 {# fun unsafe resource_set_dispatcher as ^ {
     `ServerAny',
-    withDispatcher* `Dispatcher EServer',
-    castStablePtrToPtr `StablePtr a',
+    withDispatcher* `Dispatcher EServer impl',
+    castStablePtrToPtr `StablePtr impl',
     withNullPtr- `Ptr ()',
     withDestroyCallback* `DestroyCallback'
   } -> `()' #}
