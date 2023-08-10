@@ -1,108 +1,140 @@
 module Graphics.Wayland.Scanner.Marshal (
+  module Control.Monad.Trans.Class,
+  ContT (..),
+  evalContT,
+  PeelT,
+  runPeelT,
+  peeling,
+  peekOne,
   AsArguments (..),
-  ArgumentAtom (..),
   EnumAtom (..),
   unEnumAtom,
-  trivial,
 ) where
 
+import Control.Monad.Trans.Class (MonadTrans (..))
+import Control.Monad.Trans.Cont
+import Control.Monad.Trans.State.Strict
 import Data.ByteString qualified as BS
 import Data.ByteString.Unsafe qualified as BS
 import Data.Fixed (Fixed (..))
-import Data.Int
+import Data.Proxy (Proxy (..))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Data.Word
-import Foreign (nullPtr, peek, with)
+import Foreign (Ptr, nullPtr, peek, with)
 import Graphics.Flag
 import Graphics.Wayland.Remote
-import Graphics.Wayland.Util (Argument, WlArray, WlFixed, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
-import Language.Haskell.TH qualified as TH
-import System.Posix.Types
+import Graphics.Wayland.Util
 
-trivial :: TH.Q [TH.Dec]
-trivial = pure []
+-- | Monad where one could "peel" away the elements, progressively checking at it.
+newtype PeelT e m a = PeelT (StateT [e] m a)
+  deriving (Functor, Applicative, Monad)
+
+runPeelT :: (Monad m) => PeelT e m a -> [e] -> m a
+runPeelT (PeelT act) = evalStateT act
+
+peeling :: (Monad m) => (e -> m a) -> PeelT e m a
+peeling run = PeelT . StateT $ \case
+  (x : xs) -> (,xs) <$> run x
+  [] -> error "cannot peel from empty list"
+
+-- | Peek one without popping it out.
+peekOne :: (Monad m) => PeelT e m e
+peekOne = PeelT $ gets head
 
 -- | Arguments record which could be marshalled into wl_argument array.
 class AsArguments arg where
   -- | Number of argument atoms in the type.
   argLength :: proxy arg -> Int
+  argLength _ = 1 -- default is the singleton case.
 
   -- | Marshall arguments into Argument list.
-  withArgs :: arg -> ([Argument] -> IO a) -> IO a
+  withArgs :: arg -> ContT r IO [Argument]
 
   -- | Marshall arguments out of Argument list.
-  peekArgs :: [Argument] -> IO arg
+  peekArgs :: PeelT Argument IO arg
 
--- | Types which support the conversion to Argument atom.
-class ArgumentAtom atom where
-  withAtom :: atom -> (Argument -> IO a) -> IO a
-  peekAtom :: Argument -> IO atom
+withArgsPtr :: Ptr a -> ContT r IO [Argument]
+withArgsPtr ptr = pure [ptrToArgument ptr]
 
-instance ArgumentAtom T.Text where
-  withAtom :: T.Text -> (Argument -> IO a) -> IO a
-  withAtom txt act = BS.useAsCString (T.encodeUtf8 txt) (act . ptrToArgument)
-  peekAtom :: Argument -> IO T.Text
-  peekAtom arg = T.decodeUtf8 <$> BS.unsafePackCString (argumentToPtr arg)
+withArgsWord :: Word -> ContT r IO [Argument]
+withArgsWord word = pure [wordToArgument word]
 
-instance ArgumentAtom WlArray where
-  withAtom :: WlArray -> (Argument -> IO a) -> IO a
-  withAtom array act = with array (act . ptrToArgument)
-  peekAtom :: Argument -> IO WlArray
-  peekAtom arg = peek (argumentToPtr arg)
+peelingPtr :: (Ptr a -> IO b) -> PeelT Argument IO b
+peelingPtr act = peeling (act . argumentToPtr)
 
-instance ArgumentAtom Word32 where
-  withAtom :: Word32 -> (Argument -> IO a) -> IO a
-  withAtom num act = act $ wordToArgument (fromIntegral num)
-  peekAtom :: Argument -> IO Word32
-  peekAtom arg = pure $ fromIntegral (argumentToWord arg)
+peelWord :: PeelT Argument IO Word
+peelWord = peeling (pure . argumentToWord)
 
-instance ArgumentAtom Int32 where
-  withAtom :: Int32 -> (Argument -> IO a) -> IO a
-  withAtom num act = act $ wordToArgument (fromIntegral num)
-  peekAtom :: Argument -> IO Int32
-  peekAtom arg = pure $ fromIntegral (argumentToWord arg)
+instance AsArguments T.Text where
+  withArgs :: T.Text -> ContT r IO [Argument]
+  withArgs txt = withArgsPtr =<< ContT (BS.useAsCString $ T.encodeUtf8 txt)
+  peekArgs :: PeelT Argument IO T.Text
+  peekArgs = T.decodeUtf8 <$> peelingPtr BS.unsafePackCString
+
+instance AsArguments WlArray where
+  withArgs :: WlArray -> ContT r IO [Argument]
+  withArgs array = withArgsPtr =<< ContT (with array)
+  peekArgs :: PeelT Argument IO WlArray
+  peekArgs = peelingPtr peek
+
+instance AsArguments Word32 where
+  withArgs :: Word32 -> ContT r IO [Argument]
+  withArgs num = withArgsWord (fromIntegral num)
+  peekArgs :: PeelT Argument IO Word32
+  peekArgs = fromIntegral <$> peelWord
+
+instance AsArguments Int32 where
+  withArgs :: Int32 -> ContT r IO [Argument]
+  withArgs num = withArgsWord (fromIntegral num)
+  peekArgs :: PeelT Argument IO Int32
+  peekArgs = fromIntegral <$> peelWord
 
 -- Fixed type converts its internals
-instance ArgumentAtom WlFixed where
-  withAtom :: WlFixed -> (Argument -> IO a) -> IO a
-  withAtom (MkFixed inner) act = act $ wordToArgument (fromIntegral inner)
-  peekAtom :: Argument -> IO WlFixed
-  peekAtom arg = pure $ (MkFixed . fromIntegral) (argumentToWord arg)
+instance AsArguments WlFixed where
+  withArgs :: WlFixed -> ContT r IO [Argument]
+  withArgs (MkFixed inner) = withArgsWord (fromIntegral inner)
+  peekArgs :: PeelT Argument IO WlFixed
+  peekArgs = MkFixed . fromIntegral <$> peelWord
 
-instance ArgumentAtom Fd where
-  withAtom :: Fd -> (Argument -> IO a) -> IO a
-  withAtom fd act = act $ wordToArgument (fromIntegral fd)
-  peekAtom :: Argument -> IO Fd
-  peekAtom arg = pure $ fromIntegral (argumentToWord arg)
+instance AsArguments Fd where
+  withArgs :: Fd -> ContT r IO [Argument]
+  withArgs fd = withArgsWord (fromIntegral fd)
+  peekArgs :: PeelT Argument IO Fd
+  peekArgs = fromIntegral <$> peelWord
 
-instance (ArgumentAtom t) => ArgumentAtom (Maybe t) where
-  withAtom :: (ArgumentAtom t) => Maybe t -> (Argument -> IO a) -> IO a
-  withAtom = \case
-    Just val -> withAtom val
-    Nothing -> \act -> act $ ptrToArgument nullPtr
-  peekAtom :: (ArgumentAtom t) => Argument -> IO (Maybe t)
-  peekAtom arg = case argumentToPtr arg of
-    n | n == nullPtr -> pure Nothing
-    _ -> Just <$> peekAtom arg
+-- Nullable case; Simply check if the first atom is null.
+instance (AsArguments t) => AsArguments (Maybe t) where
+  argLength :: (AsArguments t) => proxy (Maybe t) -> Int
+  argLength _ = argLength (Proxy @t)
 
-instance ArgumentAtom (RemoteAny e) where
-  withAtom :: RemoteAny e -> (Argument -> IO a) -> IO a
-  withAtom (RemoteAny ptr) act = act $ ptrToArgument ptr
-  peekAtom :: Argument -> IO (RemoteAny e)
-  peekAtom arg = pure . RemoteAny $ argumentToPtr arg
+  withArgs :: (AsArguments t) => Maybe t -> ContT r IO [Argument]
+  withArgs = \case
+    Just val -> withArgs val
+    Nothing -> withArgsPtr nullPtr
 
-instance (HasInterface a) => ArgumentAtom (Remote e a) where
-  withAtom :: Remote e a -> (Argument -> IO b) -> IO b
-  withAtom remote = withAtom (untypeRemote remote)
-  peekAtom :: Argument -> IO (Remote e a)
-  peekAtom arg = typeRemote <$> peekAtom arg
+  peekArgs :: (AsArguments t) => PeelT Argument IO (Maybe t)
+  peekArgs =
+    peekOne >>= \case
+      arg | argumentToPtr arg == nullPtr -> pure Nothing
+      _ -> Just <$> peekArgs
 
-instance ArgumentAtom (NewID e a) where
-  withAtom :: NewID e a -> (Argument -> IO b) -> IO b
-  withAtom (NewID ident) = withAtom ident
-  peekAtom :: Argument -> IO (NewID e a)
-  peekAtom arg = NewID <$> peekAtom arg
+instance AsArguments (RemoteAny e) where
+  withArgs :: RemoteAny e -> ContT r IO [Argument]
+  withArgs (RemoteAny ptr) = withArgsPtr ptr
+  peekArgs :: PeelT Argument IO (RemoteAny e)
+  peekArgs = RemoteAny <$> peelingPtr pure
+
+instance (HasInterface a) => AsArguments (Remote e a) where
+  withArgs :: (HasInterface a) => Remote e a -> ContT r IO [Argument]
+  withArgs remote = withArgs (untypeRemote remote)
+  peekArgs :: (HasInterface a) => PeelT Argument IO (Remote e a)
+  peekArgs = typeRemote <$> peekArgs
+
+instance AsArguments (NewID e a) where
+  withArgs :: NewID e a -> ContT r IO [Argument]
+  withArgs (NewID ident) = withArgs ident
+  peekArgs :: PeelT Argument IO (NewID e a)
+  peekArgs = NewID <$> peekArgs
 
 -- | To have shorter templated code.
 newtype EnumAtom a = EnumAtom a
@@ -110,14 +142,14 @@ newtype EnumAtom a = EnumAtom a
 unEnumAtom :: EnumAtom a -> a
 unEnumAtom (EnumAtom a) = a
 
-instance (Enum a) => ArgumentAtom (EnumAtom a) where
-  withAtom :: (Enum a) => EnumAtom a -> (Argument -> IO b) -> IO b
-  withAtom atom act = act $ wordToArgument (fromIntegral . fromEnum . unEnumAtom $ atom)
-  peekAtom :: (Enum a) => Argument -> IO (EnumAtom a)
-  peekAtom arg = pure $ (EnumAtom . toEnum . fromIntegral) (argumentToWord arg)
+instance (Enum a) => AsArguments (EnumAtom a) where
+  withArgs :: (Enum a) => EnumAtom a -> ContT r IO [Argument]
+  withArgs atom = withArgsWord (fromIntegral . fromEnum . unEnumAtom $ atom)
+  peekArgs :: (Enum a) => PeelT Argument IO (EnumAtom a)
+  peekArgs = EnumAtom . toEnum . fromIntegral <$> peelWord
 
-instance (Flag a) => ArgumentAtom (Flags a) where
-  withAtom :: (Flag a) => Flags a -> (Argument -> IO b) -> IO b
-  withAtom flags act = act $ wordToArgument (fromFlags flags)
-  peekAtom :: (Flag a) => Argument -> IO (Flags a)
-  peekAtom arg = pure $ toFlags (argumentToWord arg)
+instance (Flag a) => AsArguments (Flags a) where
+  withArgs :: (Flag a) => Flags a -> ContT r IO [Argument]
+  withArgs flags = withArgsWord (fromFlags flags)
+  peekArgs :: (Flag a) => PeelT Argument IO (Flags a)
+  peekArgs = toFlags <$> peelWord

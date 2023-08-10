@@ -4,6 +4,8 @@ module Graphics.Wayland.Scanner (
   module Graphics.Wayland.Remote,
   module Graphics.Flag,
   module Graphics.Wayland.Scanner.Marshal,
+  Proxy (..),
+  Ap (..),
   Int32,
   Word32,
   WlArray (..),
@@ -11,10 +13,10 @@ module Graphics.Wayland.Scanner (
   Fd,
 ) where
 
-import Data.Int (Int32)
+import Data.Monoid (Ap (..))
+import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Word (Word32)
 import Graphics.Flag
 import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
@@ -23,10 +25,8 @@ import Graphics.Wayland.Scanner.Generate.GenMethods (generateAllMessages)
 import Graphics.Wayland.Scanner.Generate.GenTypes (generateAllTypes)
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Parse
-import Graphics.Wayland.Server.Resource ()
-import Graphics.Wayland.Util (WlArray (..))
+import Graphics.Wayland.Util (Fd, Int32, WlArray (..), Word32)
 import Language.Haskell.TH qualified as TH
-import System.Posix.Types (Fd)
 
 -- | Emit the protocol types to a module.
 emitProtocolTypes :: String -> FilePath -> TH.Q [TH.Dec]

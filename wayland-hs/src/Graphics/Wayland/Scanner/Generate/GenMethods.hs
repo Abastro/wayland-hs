@@ -66,24 +66,27 @@ generateMessageSend end parent idx message = do
 -- TODO Dispatcher and implementation
 
 sendEvent :: (AsArguments arg) => Word32 -> Remote EServer a -> arg -> IO ()
-sendEvent opcode remote args =
-  withArgs args $ \argList -> withArray argList $ \argArray ->
-    resourcePostEventArray (untypeRemote remote) opcode argArray
+sendEvent opcode remote args = evalContT $ do
+  argList <- withArgs args
+  argArray <- ContT (withArray argList)
+  lift $ resourcePostEventArray (untypeRemote remote) opcode argArray
 
 -- TODO Version
 sendRequest :: (AsArguments arg) => Word32 -> [MarshalFlag] -> Remote EClient a -> arg -> IO ()
-sendRequest opcode flags remote args = do
-  _ <- withArgs args $ \argList -> withArray argList $ \argArray ->
-    proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (makeFlags flags) argArray
+sendRequest opcode flags remote args = evalContT $ do
+  argList <- withArgs args
+  argArray <- ContT (withArray argList)
+  _ <- lift $ proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (makeFlags flags) argArray
   pure ()
 
 sendRequestRet :: (AsArguments arg) => Word32 -> Remote EClient a -> arg -> IO (Remote EClient b)
-sendRequestRet opcode remote args = do
+sendRequestRet opcode remote args = evalContT $ do
   -- TODO Pass interface C struct
   -- This means complication for wl_registry::bind.
   -- There should be a way to get around that..
-  returned <- withArgs args $ \argList -> withArray argList $ \argArray ->
-    proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (toFlags 0) argArray
+  argList <- withArgs args
+  argArray <- ContT (withArray argList)
+  returned <- lift $ proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (toFlags 0) argArray
   pure (typeRemote returned)
 
 -- | Get return type if the "argument" should be a return.

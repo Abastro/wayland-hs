@@ -3,6 +3,7 @@ module Graphics.Wayland.Util (
   Interface(..),
   WlArray(..), WlArrayPtr,
   WlRes, WlFixed,
+  Int32, Word32, Fd,
   Argument(..), ArgumentPtr, ptrToArgument, argumentToPtr, wordToArgument, argumentToWord,
   Dispatcher, CDispatcher, withDispatcher,
 )
@@ -13,6 +14,7 @@ import Data.ByteString.Unsafe qualified as BS
 import Data.Fixed
 import Foreign
 import Foreign.C.Types
+import System.Posix.Types (Fd)
 
 #include <wayland-util.h>
 {# context prefix="wl" #}

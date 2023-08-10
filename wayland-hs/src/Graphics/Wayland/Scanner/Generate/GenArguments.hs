@@ -7,6 +7,8 @@ module Graphics.Wayland.Scanner.Generate.GenArguments (
 
 import Data.Foldable
 import Data.Int
+import Data.Monoid (Ap (..))
+import Data.Proxy
 import Data.Text qualified as T
 import Data.Word
 import Graphics.Flag
@@ -15,9 +17,8 @@ import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
-import Graphics.Wayland.Util (WlArray, WlFixed)
+import Graphics.Wayland.Util (WlArray, WlFixed, Fd)
 import Language.Haskell.TH qualified as TH
-import System.Posix.Types (Fd)
 
 -- | Generate all arguments.
 --
@@ -39,7 +40,7 @@ generateMessageArgument parent message = do
   typeDec <- TH.dataD (pure []) argsType [kinded] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec
 
-  instances <- argumentInstances argsType [fieldName | (fieldName, _, _) <- fields]
+  instances <- argumentInstances argsType [(fieldName, fieldType) | (fieldName, _, fieldType) <- fields]
   pure (docTypeDec : instances)
  where
   typeVar = TH.mkName "e"
@@ -59,49 +60,21 @@ argumentField parentIf theEnd msgName arg = do
 --   Generates:
 --
 -- > instance AsArguments (FooBarArg e) where
--- >   withArgs args emit =
--- >     withAtom args.foo $ \fooP ->
--- >       withAtom args.bar $ \barP ->
--- >         emit [fooP, barP]
--- >   peekArgs = \case
--- >     [fooP, barP] ->
--- >       peekAtom fooP >>= \foo ->
--- >         peekAtom barP >>= \bar ->
--- >           pure FooBarArg{foo, bar}
--- >     _ -> error "wrong number of arguments, expected 2."
-argumentInstances :: TH.Name -> [TH.Name] -> Scan [TH.Dec]
-argumentInstances argsType fieldNames =
+-- >   argLength _ = sum [argLength @Foo Proxy, argLength @Bar Proxy]
+-- >   withArgs (FooBarArg foo bar) = getAp $ foldMap Ap [withArgs foo, withArgs bar]
+-- >   peekArgs = pure FooBarArg <*> peekArgs <*> peekArgs
+argumentInstances :: TH.Name -> [(TH.Name, TH.Type)] -> Scan [TH.Dec]
+argumentInstances argsType fields =
   [d|
     instance AsArguments ($(TH.conT argsType) e) where
-      argLength _ = numArgs
-      withArgs $(wildOnZero $ TH.varP args) $(TH.varP emit) =
-        $(foldr withAtomOn withArgsRet fieldNames)
-      peekArgs $(TH.listP $ TH.varP <$> argNameList) =
-        $(foldr peekAtomOn peekArgsRet fieldNames)
-      peekArgs _ = error $(TH.litE $ TH.StringL peekError)
+      argLength _ = sum $(TH.listE [[e|argLength @($(pure typ)) Proxy|] | (_, typ) <- fields])
+
+      withArgs $(TH.conP argsType [TH.varP field | (field, _) <- fields]) =
+        getAp $ foldMap Ap $(TH.listE [[e|withArgs $(TH.varE field)|] | (field, _) <- fields])
+
+      peekArgs =
+        $(foldl' (\l r -> [e|$l <*> $r|]) [e|pure $(TH.conE argsType)|] [[e|peekArgs|] | _ <- fields])
     |]
- where
-  wildOnZero pat = if numArgs == 0 then TH.wildP else pat
-  argNameFor field = TH.mkName $ TH.nameBase field <> "P"
-  argNameList = argNameFor <$> fieldNames
-
-  withAtomOn field next =
-    [e|
-      withAtom $(TH.getFieldE (TH.varE args) (TH.nameBase field)) $ \ $(TH.varP $ argNameFor field) ->
-        $next
-      |]
-  withArgsRet = [e|$(TH.varE emit) $(TH.listE $ TH.varE <$> argNameList)|]
-  peekAtomOn field next =
-    [e|
-      peekAtom $(TH.varE $ argNameFor field) >>= \ $(TH.varP field) ->
-        $next
-      |]
-  peekArgsRet = [e|pure $(TH.recConE argsType $ [TH.fieldExp aField (TH.varE aField) | aField <- fieldNames])|]
-  peekError = "wrong number of arguments, expected " <> show numArgs <> "."
-
-  numArgs = length fieldNames
-  args = TH.mkName "args"
-  emit = TH.mkName "emit"
 
 -- TODO Client-allocated types should not be NewID.
 argumentType :: QualifiedName -> Scan TH.Type -> ArgumentType -> Scan TH.Type

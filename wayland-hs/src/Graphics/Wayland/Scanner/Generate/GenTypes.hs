@@ -70,9 +70,9 @@ enumInstanceDec typ entryPairs = \case
         fromEnum = $(TH.lamCaseE $ uncurry nameToVal <$> entryPairs)
         toEnum = $(TH.lamCaseE $ uncurry valToName <$> entryPairs)
 
-      instance ArgumentAtom $typ where
-        withAtom enum = withAtom (EnumAtom enum)
-        peekAtom arg = unEnumAtom <$> peekAtom arg
+      instance AsArguments $typ where
+        withArgs enum = withArgs (EnumAtom enum)
+        peekArgs = unEnumAtom <$> peekArgs
       |]
   BitField ->
     [d|
