@@ -103,6 +103,7 @@ argumentInstances argsType fieldNames =
   args = TH.mkName "args"
   emit = TH.mkName "emit"
 
+-- TODO Client-allocated types should not be NewID.
 argumentType :: QualifiedName -> Scan TH.Type -> ArgumentType -> Scan TH.Type
 argumentType parent theEnd = \case
   PrimType typ -> case typ of

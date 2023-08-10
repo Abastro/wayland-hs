@@ -9,8 +9,9 @@ module Graphics.Wayland.Scanner.Generate.GenMethods (
 
 import Control.Monad
 import Data.Foldable
+import Data.Monoid qualified as Monoid
 import Data.Text qualified as T
-import Foreign
+import Foreign hiding (void)
 import Graphics.Flag (makeFlags)
 import Graphics.Wayland.Client.Proxy (proxyMarshalArrayFlags)
 import Graphics.Wayland.Remote
@@ -34,7 +35,7 @@ generateInterfaceMessages end interface = do
     EndServer -> (interface.requests, interface.events)
 
 -- | Generate functions for sending messages.
-generateMessageSend :: End -> QualifiedName -> Int -> MessageSpec -> Scan [TH.Dec]
+generateMessageSend :: End -> QualifiedName -> Word32 -> MessageSpec -> Scan [TH.Dec]
 generateMessageSend end parent idx message = do
   -- The environment is orthogonal, so we "scan new type" here.
   ifName <- scanNewType parent
@@ -45,15 +46,18 @@ generateMessageSend end parent idx message = do
   case end of
     EndServer -> do
       msgSig <- TH.sigD fnName [t|Remote EndServer $interfaceType -> $argsType EndServer -> IO ()|]
-      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendEvent opcode|]) []]
+      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendEvent idx|]) []]
+      pure [msgSig, msgDec]
+    EndClient | Just returnType <- mayReturn -> do
+      msgSig <- TH.sigD fnName [t|Remote EndClient $interfaceType -> $argsType EndClient -> IO $returnType|]
+      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendRequestRet idx|]) []]
       pure [msgSig, msgDec]
     EndClient -> do
       msgSig <- TH.sigD fnName [t|Remote EndClient $interfaceType -> $argsType EndClient -> IO ()|]
-      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendRequest opcode|]) []]
+      msgDec <- TH.funD fnName [TH.clause [] (TH.normalB [e|sendRequest idx|]) []]
       pure [msgSig, msgDec]
  where
-  opcode :: Word32
-  opcode = fromIntegral idx
+  Monoid.First mayReturn = foldMap (\arg -> Monoid.First $ getReturnType arg.argType) message.arguments
 
 sendEvent :: (AsArguments arg) => Word32 -> Remote EndServer a -> arg -> IO ()
 sendEvent opcode remote args =
@@ -61,8 +65,21 @@ sendEvent opcode remote args =
     resourcePostEventArray (untypeRemote remote) opcode argArray
 
 sendRequest :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO ()
-sendRequest opcode remote args = do
-  -- TODO Destructor & Returning proxy
-  _ <- withArgs args $ \argList -> withArray argList $ \argArray ->
+sendRequest opcode remote args = void (sendRequestPrim opcode remote args)
+
+sendRequestRet :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO (Remote EndClient b)
+sendRequestRet opcode remote args = typeRemote <$> sendRequestPrim opcode remote args
+
+sendRequestPrim :: (AsArguments arg) => Word32 -> Remote EndClient a -> arg -> IO (RemoteAny EndClient)
+sendRequestPrim opcode remote args = do
+  -- TODO Destructor
+  withArgs args $ \argList -> withArray argList $ \argArray ->
     proxyMarshalArrayFlags (untypeRemote remote) opcode Nothing 0 (makeFlags []) argArray
-  pure ()
+
+-- | Get return type if the "argument" should be a return.
+getReturnType :: ArgumentType -> Maybe (Scan TH.Type)
+getReturnType = \case
+  RefType _ (ArgNewID name) -> Just $ do
+    interfaceType <- scanNewType (lead name)
+    [t|Remote EndClient $(TH.conT interfaceType)|]
+  _ -> Nothing
