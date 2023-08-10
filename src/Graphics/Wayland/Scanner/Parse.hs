@@ -123,27 +123,27 @@ parseArgument = elementAttrIn ["arg"] $ \_ attrMap -> do
   Just allowNull <- pure (canNull <$> attrFlag attrMap "allow-null")
 
   argType <-
-    either PrimType (RefType allowNull) <$> case attrText attrMap "enum" of
+    either FlatType (RefType allowNull) <$> case attrText attrMap "enum" of
       Just enum -> pure $ Left (ArgEnum enum) -- Special-case enum
       Nothing -> getArgumentType argName mayInterface argTypeName
 
   pure $ case argType of
-    RefType _ ArgNewIDDyn ->
+    FlatType ArgNewIDDyn ->
       -- Just because 'new_id with interface not specified' do some.. magic
       [argInterface, argVersion, ArgumentSpec{argName, argType, argSummary}]
     _ -> [ArgumentSpec{argName, argType, argSummary}]
  where
   canNull flag = if flag then Nullable else NonNull
   argInterface = ArgumentSpec (T.pack "interface") (RefType NonNull ArgString) Nothing
-  argVersion = ArgumentSpec (T.pack "version") (PrimType ArgUInt) Nothing
+  argVersion = ArgumentSpec (T.pack "version") (FlatType ArgUInt) Nothing
 
-getArgumentType :: T.Text -> Maybe T.Text -> String -> XMLParser (Either ArgPrimitive ArgReference)
+getArgumentType :: T.Text -> Maybe T.Text -> String -> XMLParser (Either ArgFlat ArgReference)
 getArgumentType argName mayInterface = \case
   "int" -> pure $ Left ArgInt
   "uint" -> pure $ Left ArgUInt
   "fixed" -> pure $ Left ArgFixed
   "object" -> pure $ Right (maybe ArgObjectAny ArgObject mayInterface)
-  "new_id" -> pure $ Right (maybe ArgNewIDDyn ArgNewID mayInterface)
+  "new_id" -> pure $ Left (maybe ArgNewIDDyn ArgNewID mayInterface)
   "string" -> pure $ Right ArgString
   "array" -> pure $ Right ArgArray
   "fd" -> pure $ Left ArgFd

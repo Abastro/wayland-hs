@@ -11,7 +11,7 @@ module Graphics.Wayland.Scanner.Types (
   CanNull (..),
   EnumType (..),
   ArgumentType (..),
-  ArgPrimitive (..),
+  ArgFlat (..),
   ArgReference (..),
   Description (..),
 ) where
@@ -78,26 +78,25 @@ data ArgumentSpec = ArgumentSpec
 data CanNull = NonNull | Nullable
   deriving (Show)
 
--- TODO new_id gives returns on the calling end.
--- ? new_id seems to be only on requests
 data ArgumentType
-  = PrimType ArgPrimitive
+  = FlatType ArgFlat
   | RefType CanNull ArgReference
   deriving (Show)
 
-data ArgPrimitive
+-- | Flat types, not allowing null.
+data ArgFlat
   = ArgInt
   | ArgUInt
   | ArgFixed
   | ArgEnum T.Text
+  | ArgNewID T.Text
+  | ArgNewIDDyn
   | ArgFd
   deriving (Show)
 
 data ArgReference
   = ArgObject T.Text
   | ArgObjectAny
-  | ArgNewID T.Text
-  | ArgNewIDDyn
   | ArgString
   | ArgArray
   deriving (Show)

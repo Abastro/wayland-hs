@@ -106,18 +106,18 @@ argumentInstances argsType fieldNames =
 -- TODO Client-allocated types should not be NewID.
 argumentType :: QualifiedName -> Scan TH.Type -> ArgumentType -> Scan TH.Type
 argumentType parent theEnd = \case
-  PrimType typ -> case typ of
+  FlatType typ -> case typ of
     ArgInt -> [t|Int32|]
     ArgUInt -> [t|Word32|]
     ArgFixed -> [t|WlFixed|]
     ArgFd -> [t|Fd|]
     ArgEnum name -> enumTypeOf name
+    ArgNewID name -> [t|NewID $theEnd $(interfaceTypeOf name)|]
+    ArgNewIDDyn -> [t|NewID $theEnd ()|]
   -- References can be nullable
   RefType canNull typ -> addNullable canNull $ case typ of
     ArgObject name -> [t|Remote $theEnd $(interfaceTypeOf name)|]
     ArgObjectAny -> [t|RemoteAny $theEnd|]
-    ArgNewID name -> [t|NewID $theEnd $(interfaceTypeOf name)|]
-    ArgNewIDDyn -> [t|NewID $theEnd ()|]
     ArgString -> [t|T.Text|]
     ArgArray -> [t|WlArray|]
  where

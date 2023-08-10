@@ -79,7 +79,7 @@ sendRequestPrim opcode remote args = do
 -- | Get return type if the "argument" should be a return.
 getReturnType :: ArgumentType -> Maybe (Scan TH.Type)
 getReturnType = \case
-  RefType _ (ArgNewID name) -> Just $ do
+  FlatType (ArgNewID name) -> Just $ do
     interfaceType <- scanNewType (lead name)
     [t|Remote EndClient $(TH.conT interfaceType)|]
   _ -> Nothing
