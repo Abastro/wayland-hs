@@ -25,9 +25,6 @@ import Graphics.Wayland.Remote
 
 {# pointer *client as Client newtype #}
 
-withResourceDispatcher :: Dispatcher ServerAny -> (FunPtr CDispatcher -> IO a) -> IO a
-withResourceDispatcher = withDispatcher RemoteAny
-
 type DestroyCallback = ServerAny -> IO ()
 foreign import ccall unsafe "wrapper" makeDestroyCallback :: DestroyCallback -> IO (FunPtr DestroyCallback)
 withDestroyCallback :: DestroyCallback -> (FunPtr DestroyCallback -> IO a) -> IO a
@@ -82,7 +79,7 @@ withDestroyCallback func act = do
 -- >         wl_resource_destroy_func_t destroy);
 {# fun unsafe resource_set_dispatcher as ^ {
     `ServerAny',
-    withResourceDispatcher* `Dispatcher ServerAny',
+    withDispatcher* `Dispatcher EServer',
     castStablePtrToPtr `StablePtr a',
     withNullPtr- `Ptr ()',
     withDestroyCallback* `DestroyCallback'

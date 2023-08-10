@@ -2,6 +2,7 @@ module Graphics.Wayland.Client.Proxy (
   MarshalFlag(..),
   proxyMarshalArrayFlags,
   proxyGetVersion,
+  proxyAddDispatcher,
 )
 where
 
@@ -51,3 +52,16 @@ flagMarshal = fromIntegral . fromFlags
 {# fun unsafe proxy_get_version as ^ {
     `ClientAny'    
   } -> `Word32' #}
+
+-- | No documentation. (dispatcher_data is the implementation)
+--
+-- > int
+-- > wl_proxy_add_dispatcher(struct wl_proxy *proxy,
+-- >       wl_dispatcher_func_t dispatcher_func,
+-- >       const void * dispatcher_data, void *data);
+{# fun unsafe proxy_add_dispatcher as ^ {
+    `ClientAny',
+    withDispatcher* `Dispatcher EClient',
+    castStablePtrToPtr `StablePtr a',
+    withNullPtr- `Ptr ()'
+  } -> `Int' #}
