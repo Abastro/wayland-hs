@@ -1,6 +1,7 @@
 module Graphics.Wayland.Scanner.Flag (
   Flag (..),
   Flags,
+  makeFlags,
   hasFlag,
   toFlags,
   fromFlags,
@@ -8,6 +9,7 @@ module Graphics.Wayland.Scanner.Flag (
 
 import Data.Bits (Bits (..))
 import Data.Coerce
+import Data.List
 
 -- | Denotes a type encoded as a bit field.
 class Flag a where
@@ -20,6 +22,9 @@ newtype Flags a = InternalMkFlag Word -- Encoded as a phantom type now.
 instance Show (Flags a) where
   show :: Flags a -> String
   show _ = "Flags"
+
+makeFlags :: (Flag a) => [a] -> Flags a
+makeFlags flags = toFlags . foldl' (.|.) 0 $ flagBits <$> flags
 
 hasFlag :: (Flag a) => a -> Flags a -> Bool
 hasFlag tar (InternalMkFlag bitfield) = toTest .&. bitfield == toTest

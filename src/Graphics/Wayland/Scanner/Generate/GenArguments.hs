@@ -1,4 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Graphics.Wayland.Scanner.Generate.GenArguments (
@@ -34,7 +33,7 @@ generateAllArguments protocol = foldMap genForInterface protocol.interfaces
 -- The interface types must have been introduced first for this to work properly.
 generateMessageArgument :: QualifiedName -> MessageSpec -> Scan [TH.Dec]
 generateMessageArgument parent message = do
-  argsType <- scanNewType $ subName parent [message.msgName, T.pack "Args"]
+  argsType <- scanNewType $ subName parent [message.msgName, T.pack "args"]
   fields <- traverse (argumentField parent message.msgName) (toList message.arguments)
   typeDec <- TH.dataD (pure []) argsType [] Nothing [TH.recC argsType $ pure <$> fields] [derives]
   docTypeDec <- addDescribe message.msgDescribe typeDec

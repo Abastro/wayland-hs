@@ -1,5 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Graphics.Wayland.Scanner.Generate.GenTypes (
   generateAllTypes,
@@ -15,7 +14,7 @@ import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
 
--- ? Drop the prefix
+-- ? Proper separation between server and client resource
 
 generateAllTypes :: ProtocolSpec -> Scan [TH.Dec]
 generateAllTypes protocol = foldMap generateInterfaceTypes protocol.interfaces

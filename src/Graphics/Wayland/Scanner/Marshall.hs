@@ -4,6 +4,7 @@ module Graphics.Wayland.Scanner.Marshall (
   ArgumentAtom (..),
   EnumAtom (..),
   unEnumAtom,
+  trivial,
 ) where
 
 import Data.ByteString qualified as BS
@@ -18,6 +19,10 @@ import Foreign (Ptr, nullPtr, peek, with)
 import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Util (Argument, WlArray, WlFixed, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
+import qualified Language.Haskell.TH as TH
+
+trivial :: TH.Q [TH.Dec]
+trivial = pure []
 
 -- | Denotes a new_id argument.
 newtype NewID (a :: Type) = NewID Word32 -- Dunno where this should go

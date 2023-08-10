@@ -29,11 +29,16 @@ library
     Graphics.Wayland.Scanner.Flag
     Graphics.Wayland.Scanner.Marshall
 
+    Graphics.Wayland.Client.Proxy
+
     Graphics.Wayland.Scanner.Generate.Documentation
     Graphics.Wayland.Scanner.Generate.GenTypes
     Graphics.Wayland.Scanner.Generate.GenArguments
+    Graphics.Wayland.Scanner.Generate.GenMethods
 
     Graphics.Wayland.Protocol.Types
+    Graphics.Wayland.Protocol.Server
+    Graphics.Wayland.Protocol.Client
   other-modules:
     Graphics.ForeignUtil
   default-extensions:
