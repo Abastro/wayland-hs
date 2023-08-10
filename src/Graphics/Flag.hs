@@ -1,4 +1,4 @@
-module Graphics.Wayland.Scanner.Flag (
+module Graphics.Flag (
   Flag (..),
   Flags,
   makeFlags,

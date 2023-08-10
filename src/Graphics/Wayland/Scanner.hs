@@ -2,7 +2,7 @@ module Graphics.Wayland.Scanner (
   emitProtocolTypes,
   emitProtocolEnd,
   module Graphics.Wayland.Scanner.Marshall,
-  module Graphics.Wayland.Scanner.Flag,
+  module Graphics.Flag,
   End (..),
   Int32,
   Word32,
@@ -15,8 +15,8 @@ import Data.Int (Int32)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Word (Word32)
+import Graphics.Flag
 import Graphics.Wayland.Scanner.Env
-import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Generate.GenArguments (generateAllArguments)
 import Graphics.Wayland.Scanner.Generate.GenMethods (End (..), generateAllMessages)
 import Graphics.Wayland.Scanner.Generate.GenTypes (generateAllTypes)

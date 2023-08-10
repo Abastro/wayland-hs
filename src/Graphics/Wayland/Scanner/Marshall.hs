@@ -16,7 +16,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Word
 import Foreign (Ptr, nullPtr, peek, with)
-import Graphics.Wayland.Scanner.Flag
+import Graphics.Flag
 import Graphics.Wayland.Util (Argument, WlArray, WlFixed, argumentToPtr, argumentToWord, ptrToArgument, wordToArgument)
 import System.Posix.Types
 import qualified Language.Haskell.TH as TH

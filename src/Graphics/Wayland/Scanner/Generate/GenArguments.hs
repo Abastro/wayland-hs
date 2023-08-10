@@ -10,8 +10,8 @@ import Data.Int
 import Data.Text qualified as T
 import Data.Word
 import Foreign (Ptr)
+import Graphics.Flag
 import Graphics.Wayland.Scanner.Env
-import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types

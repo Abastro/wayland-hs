@@ -8,7 +8,7 @@ import Foreign
 -- import Foreign.C.Types
 
 import Graphics.ForeignUtil
-import Graphics.Wayland.Scanner.Flag
+import Graphics.Flag
 {# import Graphics.Wayland.Util #}
 
 #include <wayland-client.h>

@@ -19,17 +19,18 @@ common warnings
 library
   import:           warnings
   exposed-modules:
+    Graphics.Flag
+
     Graphics.Wayland.Util
     Graphics.Wayland.Server.Resource
+    Graphics.Wayland.Client.Proxy
 
     Graphics.Wayland.Scanner
     Graphics.Wayland.Scanner.Types
     Graphics.Wayland.Scanner.Env
     Graphics.Wayland.Scanner.Parse
-    Graphics.Wayland.Scanner.Flag
     Graphics.Wayland.Scanner.Marshall
 
-    Graphics.Wayland.Client.Proxy
 
     Graphics.Wayland.Scanner.Generate.Documentation
     Graphics.Wayland.Scanner.Generate.GenTypes

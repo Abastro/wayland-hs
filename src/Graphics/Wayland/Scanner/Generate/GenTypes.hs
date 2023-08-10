@@ -7,8 +7,8 @@ module Graphics.Wayland.Scanner.Generate.GenTypes (
 
 import Data.Foldable
 import Foreign
+import Graphics.Flag
 import Graphics.Wayland.Scanner.Env
-import Graphics.Wayland.Scanner.Flag
 import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types

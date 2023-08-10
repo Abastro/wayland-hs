@@ -10,9 +10,9 @@ import Control.Monad
 import Data.Foldable
 import Data.Text qualified as T
 import Foreign
+import Graphics.Flag (makeFlags)
 import Graphics.Wayland.Client.Proxy (Proxy (..), proxyMarshalArrayFlags)
 import Graphics.Wayland.Scanner.Env
-import Graphics.Wayland.Scanner.Flag (makeFlags)
 import Graphics.Wayland.Scanner.Marshall
 import Graphics.Wayland.Scanner.Types
 import Graphics.Wayland.Server.Resource (Resource (..), resourcePostEventArray)
