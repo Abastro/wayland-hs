@@ -1,7 +1,7 @@
 module Graphics.Wayland.Scanner (
   emitProtocolTypes,
   emitProtocolEnd,
-  module Graphics.Wayland.Scanner.Marshall,
+  module Graphics.Wayland.Scanner.Marshal,
   module Graphics.Flag,
   End (..),
   Int32,
@@ -20,7 +20,7 @@ import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.GenArguments (generateAllArguments)
 import Graphics.Wayland.Scanner.Generate.GenMethods (End (..), generateAllMessages)
 import Graphics.Wayland.Scanner.Generate.GenTypes (generateAllTypes)
-import Graphics.Wayland.Scanner.Marshall
+import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Parse
 import Graphics.Wayland.Server.Resource ()
 import Graphics.Wayland.Util (WlArray (..))

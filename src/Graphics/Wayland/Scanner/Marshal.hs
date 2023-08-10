@@ -1,4 +1,4 @@
-module Graphics.Wayland.Scanner.Marshall (
+module Graphics.Wayland.Scanner.Marshal (
   NewID (..),
   AsArguments (..),
   ArgumentAtom (..),

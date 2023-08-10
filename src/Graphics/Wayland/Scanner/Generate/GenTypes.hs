@@ -10,7 +10,7 @@ import Foreign
 import Graphics.Flag
 import Graphics.Wayland.Scanner.Env
 import Graphics.Wayland.Scanner.Generate.Documentation
-import Graphics.Wayland.Scanner.Marshall
+import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
 

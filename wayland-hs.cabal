@@ -29,8 +29,7 @@ library
     Graphics.Wayland.Scanner.Types
     Graphics.Wayland.Scanner.Env
     Graphics.Wayland.Scanner.Parse
-    Graphics.Wayland.Scanner.Marshall
-
+    Graphics.Wayland.Scanner.Marshal
 
     Graphics.Wayland.Scanner.Generate.Documentation
     Graphics.Wayland.Scanner.Generate.GenTypes
