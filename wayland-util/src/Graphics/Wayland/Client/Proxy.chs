@@ -39,7 +39,7 @@ flagMarshal = fromIntegral . fromFlags
 {# fun unsafe proxy_marshal_array_flags as ^ {
     `ClientAny',
     `Word32',
-    nullable `Maybe Interface',
+    nullable `Maybe CInterface',
     `Word32',
     flagMarshal `Flags MarshalFlag',
     `ArgumentPtr'

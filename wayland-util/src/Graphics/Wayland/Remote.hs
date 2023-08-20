@@ -13,13 +13,14 @@ module Graphics.Wayland.Remote (
   untypeRemote,
   typeRemote,
   CInterface (..),
+  CMessage (..),
   HasInterface (..),
 ) where
 
 import Data.Coerce
 import Data.Kind
 import Data.Text qualified as T
-import Foreign (Ptr, Word32)
+import Foreign (Ptr, Word32, Storable)
 
 -- | An end is either client or server.
 data End = EndClient | EndServer
@@ -71,8 +72,13 @@ untypeRemote = coerce
 typeRemote :: RemoteAny e -> Remote e a
 typeRemote = coerce
 
--- | C type for interfaces.
+-- | C struct for wayland interfaces.
 newtype CInterface = CInterface (Ptr CInterface)
+  deriving (Storable)
+
+-- | C struct for wayland messages.
+newtype CMessage = CMessage (Ptr CMessage)
+  deriving (Storable)
 
 -- | Denotes types describing interfaces.
 class HasInterface a where

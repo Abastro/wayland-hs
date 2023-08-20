@@ -64,7 +64,7 @@ withDestroyCallback func act = do
 -- >   int version, uint32_t id);
 {# fun unsafe resource_create as ^ {
     `Client',
-    `Interface',
+    `CInterface',
     `Int',
     `Word32'
   } -> `ServerAny' #}

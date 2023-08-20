@@ -1,6 +1,5 @@
 module Graphics.Wayland.Util (
-  Message(..),
-  Interface(..),
+  createMessage,
   WlArray(..), WlArrayPtr,
   WlRes, WlFixed,
   Int32, Word32, Fd,
@@ -14,15 +13,38 @@ import Data.ByteString.Unsafe qualified as BS
 import Data.Fixed
 import Foreign
 import Foreign.C.Types
+import Foreign.C.String
 import System.Posix.Types (Fd)
 
+import Graphics.ForeignUtil
 import Graphics.Wayland.Remote
 
 #include <wayland-util.h>
 {# context prefix="wl" #}
 
-{# pointer *message as Message newtype #}
-{# pointer *interface as Interface newtype #}
+-- From Remote
+{# pointer *message as CMessage newtype nocode #}
+{# pointer *interface as CInterface newtype nocode #}
+
+-- | Create a CMessage in a raw sense. It will never be deallocated.
+createMessage :: String -> String -> [Maybe CInterface] -> IO CMessage
+createMessage name sig interfaces = do
+  message <- mallocBytes {# sizeof message #}
+  {# set message->name #} message =<< newCString name
+  {# set message->signature #} message =<< newCString sig
+  {# set message->types #} message =<< newArray (nullable <$> interfaces)
+  pure (CMessage message)
+
+-- TODO Good way to allocate interface
+-- Perhaps compute on haskell-side first, and link it around?
+-- data InterfaceRepr = InterfaceRepr String Int [Message] [Message]
+-- Then, store "Ptr InterfaceRepr".
+-- => Populate Message later
+
+-- | Sets up an interface.
+setupInterface :: String -> Int -> [CMessage] -> [CMessage] -> CInterface -> IO ()
+setupInterface name version requests events theInterface = do
+  undefined
 
 -- | Named as WlArray to avoid name collision.
 newtype WlArray = WlArray BS.ByteString
@@ -95,8 +117,8 @@ argumentToWord (Argument arg) = fromIntegral arg
 --
 -- \return 0 on success, or -1 on failure
 --
-type Dispatcher end impl = StablePtr impl -> RemoteAny end -> Word32 -> Message -> Ptr Argument -> IO Int
-type CDispatcher = Ptr () -> Ptr () -> Word32 -> Message -> Ptr Argument -> IO CInt
+type Dispatcher end impl = StablePtr impl -> RemoteAny end -> Word32 -> CMessage -> Ptr Argument -> IO Int
+type CDispatcher = Ptr () -> Ptr () -> Word32 -> CMessage -> Ptr Argument -> IO CInt
 foreign import ccall unsafe "wrapper" makeDispatcher :: CDispatcher -> IO (FunPtr CDispatcher)
 withDispatcher :: Dispatcher end impl -> (FunPtr CDispatcher -> IO a) -> IO a
 withDispatcher func act = do

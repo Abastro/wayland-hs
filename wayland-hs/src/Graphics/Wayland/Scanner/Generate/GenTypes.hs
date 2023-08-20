@@ -6,6 +6,7 @@ module Graphics.Wayland.Scanner.Generate.GenTypes (
 ) where
 
 import Data.Foldable
+import Data.Text qualified as T
 import Graphics.Flag
 import Graphics.Wayland.Remote
 import Graphics.Wayland.Scanner.Env
@@ -13,6 +14,8 @@ import Graphics.Wayland.Scanner.Generate.Documentation
 import Graphics.Wayland.Scanner.Marshal
 import Graphics.Wayland.Scanner.Types
 import Language.Haskell.TH qualified as TH
+import System.IO.Unsafe (unsafePerformIO)
+import Foreign (newStablePtr, castStablePtrToPtr, castPtr)
 
 generateAllTypes :: ProtocolSpec -> Scan [TH.Dec]
 generateAllTypes protocol = foldMap generateInterfaceTypes protocol.interfaces
@@ -49,7 +52,7 @@ generateEnums parent enum = do
   enumDec <- TH.dataD (pure []) enumType [] Nothing (simpleC . fst <$> entries) [derives]
   docEnumDec <- addDescribe enum.enumDescribe enumDec
 
-  instances <- enumInstanceDec (TH.conT enumType) entries enum.enumType
+  instances <- enumInstances (TH.conT enumType) entries enum.enumType
   pure (docEnumDec : instances)
  where
   enumQualName = subName parent [enum.enumName]
@@ -62,8 +65,8 @@ enumEntry parent entry = do
   addSummaryToLocation (TH.DeclDoc name) entry.entrySummary
   pure (name, entry.entryValue)
 
-enumInstanceDec :: Scan TH.Type -> [(TH.Name, Word)] -> EnumType -> Scan [TH.Dec]
-enumInstanceDec typ entryPairs = \case
+enumInstances :: Scan TH.Type -> [(TH.Name, Word)] -> EnumType -> Scan [TH.Dec]
+enumInstances typ entryPairs = \case
   SimpleEnum ->
     [d|
       instance Enum $typ where
@@ -83,3 +86,18 @@ enumInstanceDec typ entryPairs = \case
   nameToVal name (val :: Word) = simpleMatch (TH.conP name []) [e|val|]
   valToName name (val :: Word) = simpleMatch (TH.litP . TH.IntegerL $ fromIntegral val) (TH.conE name)
   simpleMatch pat val = TH.match pat (TH.normalB val) []
+
+generateCInterface :: InterfaceSpec -> Scan [TH.Dec]
+generateCInterface interface = do
+  cifName <- aQualified HsVariable $ subName (lead interface.ifName) [T.pack "interface"]
+  cifSig <- TH.sigD cifName [t|CInterface|]
+  cifDec <- TH.valD (TH.varP cifName) (TH.normalB $ TH.unTypeCode cifExp) []
+  undefined
+ where
+  cifExp :: TH.Code Scan CInterface
+  cifExp =
+    [||
+    unsafePerformIO $ do
+      -- stable <- castPtr . castStablePtrToPtr <$> newStablePtr ()
+      undefined
+    ||]
