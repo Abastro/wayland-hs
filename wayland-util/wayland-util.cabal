@@ -43,6 +43,7 @@ library
     bytestring,
     text,
     vector,
+    template-haskell,
   build-tool-depends:
     c2hs:c2hs >=0.28,
   pkgconfig-depends:

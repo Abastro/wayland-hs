@@ -1,5 +1,7 @@
 module Graphics.Wayland.Util (
-  createMessage,
+  createInterface,
+  createMessageRaw,
+  setMessageTypes,
   WlArray(..), WlArrayPtr,
   WlRes, WlFixed,
   Int32, Word32, Fd,
@@ -26,25 +28,30 @@ import Graphics.Wayland.Remote
 {# pointer *message as CMessage newtype nocode #}
 {# pointer *interface as CInterface newtype nocode #}
 
--- | Create a CMessage in a raw sense. It will never be deallocated.
-createMessage :: String -> String -> [Maybe CInterface] -> IO CMessage
-createMessage name sig interfaces = do
-  message <- mallocBytes {# sizeof message #}
-  {# set message->name #} message =<< newCString name
-  {# set message->signature #} message =<< newCString sig
-  {# set message->types #} message =<< newArray (nullable <$> interfaces)
-  pure (CMessage message)
+-- | Create an interface. It will never be deallocated.
+createInterface :: String -> Int -> [CMessage] -> [CMessage] -> IO CInterface
+createInterface name version requests events = do
+  interfacePtr <- mallocBytes {# sizeof interface #}
+  {# set interface->name #} interfacePtr =<< newCString name
+  {# set interface->version #} interfacePtr (fromIntegral $ version)
+  -- Hack for encoding array, because normal pointer and array pointer are indistinguishable.
+  {# set interface->method_count #} interfacePtr (fromIntegral $ length requests)
+  {# set interface->methods #} interfacePtr =<< (CMessage <$> newArray requests)
+  {# set interface->event_count #} interfacePtr (fromIntegral $ length events)
+  {# set interface->events #} interfacePtr =<< (CMessage <$> newArray events)
+  pure (CInterface interfacePtr)
 
--- TODO Good way to allocate interface
--- Perhaps compute on haskell-side first, and link it around?
--- data InterfaceRepr = InterfaceRepr String Int [Message] [Message]
--- Then, store "Ptr InterfaceRepr".
--- => Populate Message later
+-- | Create a message. It will never be deallocated.
+createMessageRaw :: String -> String -> IO CMessage
+createMessageRaw name sig = do
+  messagePtr <- mallocBytes {# sizeof message #}
+  {# set message->name #} messagePtr =<< newCString name
+  {# set message->signature #} messagePtr =<< newCString sig
+  pure (CMessage messagePtr)
 
--- | Sets up an interface.
-setupInterface :: String -> Int -> [CMessage] -> [CMessage] -> CInterface -> IO ()
-setupInterface name version requests events theInterface = do
-  undefined
+setMessageTypes :: CMessage -> [Maybe CInterface] -> IO ()
+setMessageTypes (CMessage messagePtr) interfaces = do
+  {# set message->types #} messagePtr =<< newArray (map nullable interfaces)
 
 -- | Named as WlArray to avoid name collision.
 newtype WlArray = WlArray BS.ByteString
